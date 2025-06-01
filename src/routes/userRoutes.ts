@@ -1,17 +1,24 @@
 // src/routes/userRoutes.ts
 import { Router } from "express";
-import * as userController from "../controller/userController";
+import {
+  listUsersController,
+  createUserController,
+  deleteUserController,
+  updateUserController,
+} from "../controller/userController";
 import { jwtAuth } from "../middleware/jwtAuth";
 import { roleAuthorization } from "../middleware/roleAuthorization";
-import { Role } from "../types/UserTypes";
+import { Role } from "../types/Role";
 
 const router = Router();
 
+// All three endpoints require ADMIN on this tenant
+router.use(jwtAuth(), roleAuthorization([Role.ADMIN]));
 
-// Other routes can be protected as needed with dynamic role checks:
-router.get("/",jwtAuth, roleAuthorization(Role.SUPER_ADMIN, Role.ADMIN), userController.getAllUsersController);
-router.get("/:id", jwtAuth, userController.getUserByIdController);
-router.put("/:id", jwtAuth, roleAuthorization(Role.SUPER_ADMIN, Role.ADMIN), userController.updateUserController);
-router.delete("/:id", jwtAuth, roleAuthorization(Role.SUPER_ADMIN), userController.deleteUserController);
+router
+  .get("/", listUsersController) // list non-admins in this tenant
+  .post("/", createUserController) // create publisher/editor in this tenant
+  .put("/:userId", updateUserController) // ← add
+  .delete("/:userId", deleteUserController);
 
 export default router;

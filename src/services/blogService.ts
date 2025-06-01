@@ -11,6 +11,7 @@ import { AppDataSource } from "../config/data-source";
 import { BlogStatus } from "../types/blogsType";
 import { Not } from "typeorm";
 import { fetchAuthor, fetchAuthorsMap } from "../utils/fetchAuthors";
+import { Tenant } from "../models/Tenant";
 
 ///////////////////////////////////////////////////////////////////////////////
 // 1.  CREATE  ────────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
     throw new ApiError(400, "At least one page is required");
   if (!input.authorId) throw new ApiError(400, "Author ID is required");
   if (!input.tenant) throw new ApiError(400, "Tenant identifier is required");
-
+  console.log("input", input);
   // tenant‑scoped repositories
   const blogRepo = await getRepositoryForTenant(Blog, input.tenant);
   const categoryRepo = await getRepositoryForTenant(Category, input.tenant);
@@ -48,25 +49,26 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
     coverPhoto: input.coverPhoto,
     tags: input.tags,
     authorId: input.authorId,
+    description: input.description,
     categories,
   });
 
   await blogRepo.save(blog); // ⇒ blog.id is now available
 
   // pages ───────────────────────────────────────────────────────────────────
-  blog.pages = input.pages.map((content, i) =>
-    blogPageRepo.create({ pageNumber: i + 1, content, blog })
+  blog.pages = input.pages.map(({ pageNumber, content }) =>
+    blogPageRepo.create({ pageNumber, content })
   );
   await blogRepo.save(blog); // persist pages
 
   // global search index ─────────────────────────────────────────────────────
-  await indexBlogPost({
-    blogId: blog.id,
-    tenant: input.tenant,
-    title: blog.title,
-    coverPhoto: blog.coverPhoto,
-    tags: blog.tags,
-  });
+  // await indexBlogPost({
+  //   blogId: blog.id,
+  //   tenant: input.tenant,
+  //   title: blog.title,
+  //   coverPhoto: blog.coverPhoto,
+  //   tags: blog.tags,
+  // });
 
   return blog;
 };
@@ -120,6 +122,192 @@ export const getAllBlogs = async (
     totalPages: Math.ceil(totalBlogs / limit),
   };
 };
+export const getBlogsForUser = async (
+  tenant: string,
+  authorId: string,
+  page: number,
+  limit: number,
+  categorySlug?: string
+): Promise<{
+  blogs: (Blog & { author: { id: string; name: string } })[];
+  totalPages: number;
+  totalBlogs: number;
+}> => {
+  const blogRepo = await getRepositoryForTenant(Blog, tenant);
+
+  // Build query: filter by authorId (no status filter)
+  const qb = blogRepo
+    .createQueryBuilder("blog")
+    .leftJoinAndSelect("blog.pages", "pages")
+    .leftJoinAndSelect("blog.categories", "categories")
+    .where("blog.authorId = :authorId", { authorId });
+
+  if (categorySlug && categorySlug !== "all") {
+    qb.andWhere("categories.name = :categorySlug", { categorySlug });
+  }
+
+  // pagination + count
+  const [blogs, totalBlogs] = await qb
+    .orderBy("blog.createdAt", "DESC")
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
+  // Enrich with author names (even though it's one author, reuse fetchAuthorsMap)
+  const authorMap = await fetchAuthorsMap([authorId]);
+  const enriched = blogs.map((b) => ({
+    ...b,
+    author: {
+      id: b.authorId,
+      name: authorMap[b.authorId] ?? "مؤلف مجهول",
+    },
+  }));
+
+  return {
+    blogs: enriched,
+    totalBlogs,
+    totalPages: Math.ceil(totalBlogs / limit),
+  };
+};
+async function findTenantForBlog(blogId: string): Promise<string> {
+  // load your list of tenants however you store them
+  const tenants = await AppDataSource.getRepository<Tenant>("Tenant").find();
+  for (const t of tenants) {
+    const repo = await getRepositoryForTenant(Blog, t.domain);
+    if (await repo.findOne({ where: { id: blogId } })) {
+      return t.domain;
+    }
+  }
+  throw new ApiError(404, "Blog not found in any tenant");
+}
+
+// ——————————————————————————————————————————————————————
+// Existing single‐tenant loader
+// ——————————————————————————————————————————————————————
+
+// ——————————————————————————————————————————————————————
+// New admin‐only “any tenant” loader
+// ——————————————————————————————————————————————————————
+export async function getAnyTenantBlogById(
+  id: string
+): Promise<Blog & { author: { id: string; name: string } }> {
+  // 1️⃣ discover which tenant holds this ID
+  const tenant = await findTenantForBlog(id);
+  // 2️⃣ delegate to the single‐tenant loader
+  return getBlogById(tenant, id);
+}
+// … above imports …
+async function getAllTenantSlugs(): Promise<string[]> {
+  // e.g. a Tenant model you maintain in your DB
+  const tenants = await AppDataSource.getRepository("Tenant").find();
+  return tenants.map((t: any) => t.domain);
+}
+
+export const getDashboardBlogs = async (
+  tenant: string, // could be "all" or a specific tenant slug
+  page: number,
+  limit: number,
+  categorySlug?: string,
+  statuses: BlogStatus[] = [],
+  search?: string
+): Promise<{
+  blogs: (Blog & { author: { id: string; name: string }; tenant: string })[];
+  totalPages: number;
+  totalBlogs: number;
+}> => {
+  console.log("tenant dashboard", tenant);
+  // ─── Admin view across all tenants ───────────────────────────────────────
+  if (tenant === "all") {
+    const slugs = await getAllTenantSlugs();
+    console.log("slugs", slugs);
+    let combined: (Blog & {
+      author: { id: string; name: string };
+      tenant: string;
+    })[] = [];
+
+    // For each tenant, fetch without restricting status
+    for (const t of slugs) {
+      console.log("t", t);
+      const repo = await getRepositoryForTenant(Blog, t);
+      let qb = repo
+        .createQueryBuilder("blog")
+        .leftJoinAndSelect("blog.pages", "pages")
+        .leftJoinAndSelect("blog.categories", "categories");
+
+      if (statuses.length) {
+        qb = qb.andWhere("blog.status IN (:...statuses)", { statuses });
+      }
+      if (categorySlug && categorySlug !== "all") {
+        qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
+      }
+      if (search) {
+        qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
+      }
+
+      const blogs = await qb.getMany();
+      const authorIds = [...new Set(blogs.map((b) => b.authorId))];
+      const authorMap = await fetchAuthorsMap(authorIds);
+
+      combined.push(
+        ...blogs.map((b) => ({
+          ...b,
+          author: {
+            id: b.authorId,
+            name: authorMap[b.authorId] ?? "مؤلف مجهول",
+          },
+          tenant: t,
+        }))
+      );
+    }
+
+    // sort & paginate in-memory
+    combined.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const totalBlogs = combined.length;
+    const totalPages = Math.ceil(totalBlogs / limit);
+    const sliceStart = (page - 1) * limit;
+    const paged = combined.slice(sliceStart, sliceStart + limit);
+
+    return { blogs: paged, totalBlogs, totalPages };
+  }
+
+  // ─── Publisher/editor: single-tenant view ───────────────────────────────
+  const blogRepo = await getRepositoryForTenant(Blog, tenant);
+  let qb = blogRepo
+    .createQueryBuilder("blog")
+    .leftJoinAndSelect("blog.pages", "pages")
+    .leftJoinAndSelect("blog.categories", "categories");
+
+  if (statuses.length) {
+    qb = qb.where("blog.status IN (:...statuses)", { statuses });
+  }
+  if (categorySlug && categorySlug !== "all") {
+    qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
+  }
+  if (search) {
+    qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
+  }
+
+  const [blogsRaw, totalBlogs] = await qb
+    .orderBy("blog.createdAt", "DESC")
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
+  const authorIds = [...new Set(blogsRaw.map((b) => b.authorId))];
+  const authorMap = await fetchAuthorsMap(authorIds);
+
+  const enriched = blogsRaw.map((b) => ({
+    ...b,
+    author: { id: b.authorId, name: authorMap[b.authorId] ?? "مؤلف مجهول" },
+    tenant,
+  }));
+
+  return {
+    blogs: enriched,
+    totalBlogs,
+    totalPages: Math.ceil(totalBlogs / limit),
+  };
+};
 
 // Retrieve a specific approved blog by ID
 export const getBlogById = async (
@@ -164,12 +352,8 @@ export const updateBlog = async (
       await blogPageRepo.remove(blog.pages);
     }
 
-    const newPages = pages.map((pageContent, index) =>
-      blogPageRepo.create({
-        pageNumber: index + 1,
-        content: pageContent,
-        blog: blog,
-      })
+    const newPages = pages.map(({ pageNumber, content }) =>
+      blogPageRepo.create({ pageNumber, content })
     );
     blog.pages = newPages;
   }
@@ -180,6 +364,7 @@ export const updateBlog = async (
 
 // Delete a blog
 export const deleteBlog = async (tenant: string, id: string): Promise<void> => {
+  console.log("tenant", tenant);
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   const result = await blogRepo.delete(id);
   if (result.affected === 0) {
@@ -201,8 +386,8 @@ export const searchBlogs = async (
     .orderBy("index.createdAt", "DESC")
     .getMany();
 
-  const domain = process.env.MAIN_DOMAIN || "yourdomain.com";
-
+  const proto = process.env.NODE_ENV === "production" ? "https" : "http";
+  const domain = process.env.NAVIGATION_DOMAIN ?? "localhost:3000";
   const authors = await fetchAuthorsMap(results.map((r) => r.authorId));
 
   return results.map((r) => ({
@@ -210,8 +395,8 @@ export const searchBlogs = async (
     author: { id: r.authorId, name: authors[r.authorId] ?? "مؤلف مجهول" },
     url:
       r.tenant === "main"
-        ? `https://${domain}/blogs/${r.blogId}`
-        : `https://${r.tenant}.${domain}/blogs/${r.blogId}`,
+        ? `${proto}://${domain}/blogs/${r.blogId}`
+        : `${proto}://${r.tenant}.${domain}/blogs/${r.blogId}`,
   }));
 };
 
@@ -221,7 +406,12 @@ export const updateBlogStatus = async (
   id: string,
   status: string
 ): Promise<Blog> => {
-  if (status !== BlogStatus.DRAFTED && status !== BlogStatus.READY_TO_PUBLISH) {
+  if (
+    status !== BlogStatus.DRAFTED &&
+    status !== BlogStatus.READY_TO_PUBLISH &&
+    status !== BlogStatus.ACCEPTED &&
+    status !== BlogStatus.DECLINED
+  ) {
     throw new ApiError(400, "Invalid status for publisher update");
   }
 

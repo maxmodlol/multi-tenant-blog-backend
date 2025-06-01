@@ -5,12 +5,17 @@ import tenantMiddleware from "./middleware/tenantMiddleware";
 import { formatError } from "./utils/ApiError";
 import userRoutes from "./routes/userRoutes";
 import authRoutes from "./routes/authRoutes";
-import blogRoutes from "./routes/blogsRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import swaggerUi from "swagger-ui-express";
 import * as fs from "fs";
 import * as path from "path";
 import { AppDataSource } from "./config/data-source";
+import cookieParser from "cookie-parser";
+import adRouter from "./routes/adSettingRoutes";
+import headerRouter from "./routes/adHeaderRoutes";
+import publicRouter from "./routes/blogsRoutes";
+import dashboardRouter from "./routes/dashboardRoutes";
+import tenantRoutes from "./routes/tenantRoutes";
 
 const app = express();
 
@@ -45,12 +50,13 @@ const corsOptions = {
     }
   },
   credentials: true, // ✅ Allows cookies & authentication headers
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204, // ✅ Prevents CORS preflight issues
 };
 
 app.use(cors(corsOptions));
+app.use(cookieParser());
 
 // ✅ Enable JSON parsing
 app.use(express.json());
@@ -59,10 +65,15 @@ app.use(express.json());
 app.use(tenantMiddleware);
 
 // ✅ Mount API Routes
-app.use("/api/user", userRoutes);
+app.use("/api/settings/users", userRoutes);
+app.use("/api/settings/ads", adRouter);
+app.use("/api/settings/ads/header", headerRouter);
 app.use("/api/auth", authRoutes);
-app.use("/api/blogs", blogRoutes);
+app.use("/api/dashboard/blogs", dashboardRouter);
+
+app.use("/api/blogs", publicRouter);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/tenants", tenantRoutes);
 
 // ✅ Serve Swagger API documentation
 const swaggerDocumentPath = path.join(__dirname, "./docs/swagger.json");

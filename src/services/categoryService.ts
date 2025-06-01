@@ -74,13 +74,27 @@ export const deleteCategory = async (
   tenant: string,
   id: string
 ): Promise<void> => {
-  try {
-    const categoryRepo = await getRepositoryForTenant(Category, tenant);
-    const result = await categoryRepo.delete(id);
-    if (result.affected === 0) {
-      throw new ApiError(404, "Category not found");
-    }
-  } catch (error) {
-    throw error;
+  const categoryRepo = await getRepositoryForTenant(Category, tenant);
+
+  // load the category with its blogs
+  const category = await categoryRepo.findOne({
+    where: { id },
+    relations: ["blogs"],
+  });
+  if (!category) throw new ApiError(404, "Category not found");
+
+  // detach all blog relations
+  if (category.blogs.length) {
+    await categoryRepo
+      .createQueryBuilder()
+      .relation(Category, "blogs")
+      .of(category)
+      .remove(category.blogs.map((b) => b.id));
+  }
+
+  // now it's safe to delete the category row
+  const result = await categoryRepo.delete(id);
+  if (result.affected === 0) {
+    throw new ApiError(404, "Category not found");
   }
 };

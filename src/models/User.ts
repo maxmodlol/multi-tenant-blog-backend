@@ -7,47 +7,29 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   BeforeUpdate,
+  OneToMany,
 } from "typeorm";
 import * as bcrypt from "bcrypt";
-import { Role } from "../types/UserTypes";
+import { TenantUser } from "./TenantUser";
 
+// src/models/User.ts  (public schema) ---------------------------------------
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn("uuid")
-  id!: string;
+  @PrimaryGeneratedColumn("uuid") id!: string;
+  @Column({ length: 50 }) name!: string;
+  @Column({ unique: true }) email!: string;
+  @Column() password!: string;
+  @Column({ nullable: true }) avatarUrl?: string; // ← new!
 
-  @Column({ length: 50 })
-  name!: string;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
 
-  @Column({ unique: true })
-  email!: string;
-
-  @Column()
-  password!: string;
-
-  @Column({
-    type: "enum",
-    enum: Role,
-    default: Role.PUBLISHER,
-  })
-  role!: Role;
-
-  // Optional tenant identifier (e.g., subdomain)
-  @Column({ nullable: true })
-  tenant?: string;
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
-
-  // Hash the password before inserting or updating the user
   @BeforeInsert()
   @BeforeUpdate()
-  async hashPassword() {
-    if (this.password) {
-      this.password = await bcrypt.hash(this.password, 10);
-    }
+  async hash() {
+    this.password = await bcrypt.hash(this.password, 10);
   }
+
+  // convenience: what links does this user have?
+  @OneToMany(() => TenantUser, (tu) => tu.user) links!: TenantUser[];
 }

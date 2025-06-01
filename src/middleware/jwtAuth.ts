@@ -1,37 +1,46 @@
-// src/middleware/jwtAuth.ts
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+// src/middleware/jwtAuth.ts        – type-safe & response once only
+import { RequestHandler } from "express";
+import jwt from "jsonwebtoken";
+import { COOKIE_NAME } from "../utils/jwt";
+import { Role } from "../types/Role";
 
-// Define the payload type you expect in your token
 export interface JwtPayload {
-  id: string;
+  sub: string;
   email: string;
-  role: string;
+  role: Role;
+  tenant: string;
+  iat: number;
+  exp: number;
 }
 
-export const jwtAuth = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader) {
-    res.status(401).json({ error: 'Authorization header missing' });
-    return;
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: JwtPayload;
   }
+}
 
-  // Expected format: "Bearer <token>"
-  const parts = authHeader.split(' ');
-  if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    res.status(401).json({ error: "Invalid authorization format. Use 'Bearer <token>'" });
-    return;
-  }
+export const jwtAuth =
+  (required = true): RequestHandler =>
+  (req, res, next) => {
+    const token =
+      req.cookies?.[COOKIE_NAME] ?? req.headers.authorization?.split(" ")[1];
 
-  const token = parts[1];
+    /* ─────── no token ─────── */
+    if (!token) {
+      if (required) {
+        res.status(401).json({ error: "Unauthorized" });
+      } else {
+        next();
+      }
+      return; // ← stop here
+    }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
-    (req as any).user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-    return;
-  }
-};
+    /* ───── verify token ───── */
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+      next();
+    } catch {
+      if (required) res.status(401).json({ error: "Token expired" });
+      else next();
+    }
+  };

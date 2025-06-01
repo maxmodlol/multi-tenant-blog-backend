@@ -1,27 +1,21 @@
 import { Router } from "express";
 import {
-  createBlogController,
   getAllBlogsController,
-  getBlogByIdController,
-  updateBlogController,
-  deleteBlogController,
-  updateBlogStatusController,
+  getPublicBlogByIdController,
   searchBlogsController,
   getRelatedBlogsController,
 } from "../controller/blogController";
-import { jwtAuth } from "../middleware/jwtAuth";
-import { upload } from "../middleware/upload";
 
-const router = Router();
+const publicRouter = Router();
 
-router.post("/", upload.single("coverPhoto"), createBlogController);
-router.get("/", getAllBlogsController);
-router.get("/search", searchBlogsController);
-router.get("/:id", getBlogByIdController);
-router.patch("/:id", jwtAuth, updateBlogController);
-router.patch("/:id/status", jwtAuth, updateBlogStatusController);
-router.get("/:id/related", getRelatedBlogsController);
+// List & search (approved only)
+publicRouter.get("/", getAllBlogsController);
+publicRouter.get("/search", searchBlogsController);
 
-router.delete("/:id", jwtAuth, deleteBlogController);
+// Single post (must be ACCEPTED)
+publicRouter.get("/:id", getPublicBlogByIdController);
 
-export default router;
+// Related posts (only approved)
+publicRouter.get("/:id/related", getRelatedBlogsController);
+
+export default publicRouter;

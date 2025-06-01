@@ -13,7 +13,6 @@ import {
 import { BlogPage } from "./BlogPage";
 import { Category } from "./Category";
 import { BlogStatus } from "../types/blogsType";
-import { User } from "./User";
 
 @Entity()
 export class Blog {

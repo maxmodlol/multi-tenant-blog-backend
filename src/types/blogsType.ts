@@ -4,13 +4,18 @@ export enum BlogStatus {
   DECLINED = "DECLINED",
   READY_TO_PUBLISH = "READY_TO_PUBLISH",
 }
+export interface BlogPageInput {
+  pageNumber: number;
+  content: string;
+}
 
 export interface CreateBlogInput {
   title: string;
   coverPhoto?: string;
   tags?: string[];
   categoryNames?: string[];
-  pages: string[];
+  pages: BlogPageInput[];
+  description?: string;
   authorId: string;
   tenant: string;
 }

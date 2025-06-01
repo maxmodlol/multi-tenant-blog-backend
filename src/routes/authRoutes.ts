@@ -1,17 +1,20 @@
-// src/routes/authRoutes.ts
 import { Router } from "express";
-import { loginController, registerController } from "../controller/authController";
-import { roleAuthorization } from "../middleware/roleAuthorization";
-import { Role } from "../types/UserTypes";
+import {
+  loginController,
+  meController, // 👈 new
+  logoutController, // 👈 new
+} from "../controller/authController";
 import { jwtAuth } from "../middleware/jwtAuth";
 
 const router = Router();
 
-// POST /api/auth/register - create a new user and return a JWT
-router.post("/register",jwtAuth,roleAuthorization(Role.SUPER_ADMIN, Role.ADMIN),
- registerController);
-
-// POST /api/auth/login - authenticate and return a JWT
+// login
 router.post("/login", loginController);
+
+// ── NEW endpoints ────────────────────────────────────────────────────────
+router.get("/me", jwtAuth(), meController); // needs a valid cookie
+
+router.post("/logout", jwtAuth(false), logoutController);
+// ─────────────────────────────────────────────────────────────────────────
 
 export default router;

@@ -6,6 +6,10 @@ import { GlobalBlogIndex } from "../models/GlobalBlogIndex";
 import { Blog } from "../models/Blog";
 import { BlogPage } from "../models/BlogPage";
 import { Category } from "../models/Category";
+import { TenantUser } from "../models/TenantUser";
+import { Tenant } from "../models/Tenant";
+import { AdSetting } from "../models/AdSetting";
+import { AdHeaderSetting } from "../models/AdHeaderSetting";
 
 config();
 
@@ -16,7 +20,17 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  entities: [User, Blog, BlogPage, Category, GlobalBlogIndex],
+  entities: [
+    User,
+    Blog,
+    BlogPage,
+    Category,
+    GlobalBlogIndex,
+    TenantUser,
+    Tenant,
+    AdSetting,
+    AdHeaderSetting,
+  ],
   synchronize: true, // For development only; use migrations in production
   logging: false,
 });

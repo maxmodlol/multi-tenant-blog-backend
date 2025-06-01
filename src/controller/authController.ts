@@ -1,85 +1,80 @@
-// src/controller/authController.ts
-import { Request, Response, NextFunction } from "express";
-import { createUser } from "../services/userService";
-import jwt from "jsonwebtoken";
+// controller/authController.ts
+import { Request, RequestHandler, Response } from "express";
 import bcrypt from "bcrypt";
-import { Role } from "../types/UserTypes";
-import { getTenantDataSource } from "../config/tenantDataSource";
-import { User } from "../models/User";
+import { findUserWithRole } from "../services/userService";
+import { getTenantFromReq } from "../utils/getTenantFromReq";
+import { serialize } from "cookie";
+import { signJWT, COOKIE_NAME, COOKIE_TTL } from "../utils/jwt";
 
-export const registerController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { name, email, password, role, subdomain } = req.body;
-    if (!name || !email || !password || !role) {
-      res.status(400).json({ error: "Missing required fields" });
-      return;
-    }
+// POST /main/auth/login
 
-    // For publishers, ensure a subdomain is provided and initialize the tenant DataSource.
-    if (role === Role.PUBLISHER) {
-      if (!subdomain) {
-        res.status(400).json({ error: "Publisher registration requires a subdomain" });
-        return;
-      }
-      await getTenantDataSource(subdomain);
-      // Optionally, you might store the subdomain in the user record as well.
-    }
+export async function loginController(req: Request, res: Response) {
+  const tenant = getTenantFromReq(req);
+  const { email, password } = req.body;
 
-    // Create the user (global user stored in AppDataSource)
-    const user = await createUser({ name, email, password, role });
-
-    // Generate a JWT token for the new user.
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1d" }
-    );
-
-    res.status(201).json({ user, token });
-  } catch (error) {
-    next(error);
+  const found = await findUserWithRole(email, tenant);
+  if (!found) {
+    res.status(401).json({ error: "Not Found" });
+    return;
   }
+  const { user, link } = found;
+
+  if (!(await bcrypt.compare(password, user.password))) {
+    res.status(401).json({ error: "Bad credentials" });
+    return;
+  }
+
+  const token = signJWT(user.id, user.email, link.role, link.tenant);
+
+  res.setHeader(
+    "Set-Cookie",
+    serialize(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      maxAge: COOKIE_TTL,
+      path: "/",
+      domain: process.env.MAIN_DOMAIN || "localhost",
+    })
+  );
+
+  // **return the token in the JSON**
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: link.role,
+      tenant: link.tenant,
+    },
+    token, // ← add this
+  });
+  console.log("token", token);
+}
+export const meController: RequestHandler = (req, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Unauthenticated" });
+    return; // ← early exit
+  }
+
+  const { sub: id, email, role, tenant } = req.user;
+  res.json({ id, email, role, tenant }); // ← no “return”
 };
 
-export const loginController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required" });
-      return;
-    }
-
-    // Use the shared AppDataSource to get the repository.
-    const userRepository = (await import("../config/data-source")).AppDataSource.getRepository(User);
-    const user = await userRepository.findOne({ where: { email } });
-    if (!user) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    // Generate a JWT token for the user.
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1d" }
-    );
-
-    res.json({ user, token });
-  } catch (error) {
-    next(error);
-  }
+/* ------------------------------------------------------------------ */
+/* POST /api/auth/logout  – clear cookie                              */
+/* ------------------------------------------------------------------ */
+export const logoutController: RequestHandler = (_req, res) => {
+  res.setHeader(
+    "Set-Cookie",
+    serialize(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0, // expire immediately
+      path: "/",
+      domain: process.env.MAIN_DOMAIN || "localhost",
+    })
+  );
+  res.status(204).end(); // 204 No-Content
 };

@@ -1,22 +1,26 @@
 // src/middleware/roleAuthorization.ts
-import { Request, Response, NextFunction } from "express";
-import { Role } from "../types/UserTypes";
+import { Request, Response, NextFunction, RequestHandler } from "express";
+import { Role } from "../types/Role";
 
-/**
- * Returns a middleware function that checks if the user's role is one of the allowed roles.
- * @param allowedRoles An array of allowed roles (e.g. [Role.SUPER_ADMIN, Role.ADMIN])
- */
-export const roleAuthorization = (...allowedRoles: Role[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    // Ensure req.user is available (should be set by jwtAuth)
+export const roleAuthorization =
+  (roles: Role[], tenantScope: "any" | "same" = "same"): RequestHandler =>
+  (req, res, next) => {
     if (!req.user) {
-      res.status(401).json({ error: "Unauthorized. Missing user token." });
+      res.status(401).end();
       return;
     }
-    if (!allowedRoles.includes(req.user.role as Role)) {
-      res.status(403).json({ error: "Forbidden. You do not have access to this resource." });
+    if (!roles.includes(req.user.role)) {
+      res.status(403).end();
       return;
     }
+    if (
+      tenantScope === "same" &&
+      req.user.role !== Role.ADMIN &&
+      req.user.tenant !== req.params.tenant
+    ) {
+      res.status(403).end();
+      return;
+    }
+
     next();
   };
-};

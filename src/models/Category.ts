@@ -1,5 +1,11 @@
 // src/models/Category.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  CreateDateColumn,
+} from "typeorm";
 import { Blog } from "../models/Blog";
 
 @Entity()
@@ -10,6 +16,9 @@ export class Category {
   @Column({ unique: true, length: 100 })
   name!: string;
 
-  @ManyToMany(() => Blog, blog => blog.categories)
+  @CreateDateColumn({ type: "timestamptz" })
+  createdAt!: Date;
+
+  @ManyToMany(() => Blog, (blog) => blog.categories)
   blogs!: Blog[];
 }
