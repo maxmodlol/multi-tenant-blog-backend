@@ -16,7 +16,7 @@ import { BlogStatus, CreateBlogInput, MulterS3File } from "../types/blogsType";
 export const createBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { title, tags, categoryNames } = req.body;
@@ -68,7 +68,7 @@ export const createBlogController = async (
 export const getAllBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -87,8 +87,8 @@ export const getAllBlogsController = async (
 export const getDashboardBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction
-) => {
+  next: NextFunction,
+): Promise<any> => {
   try {
     const user = (req as any).user;
     if (!user) {
@@ -101,34 +101,41 @@ export const getDashboardBlogsController = async (
     const limit = parseInt(req.query.limit as string, 10) || 9;
     const category =
       typeof req.query.category === "string" ? req.query.category : undefined;
-    const statusesParam = (req.query.statuses as string) ?? "";
-    const statuses: BlogStatus[] = statusesParam
-      ? (statusesParam.split(",") as BlogStatus[])
-      : [];
+
+    // ONLY ONE STATUS FILTER, not an array
+    const statusParam =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+    let statusFilter: BlogStatus | undefined = undefined;
+    if (statusParam) {
+      // validate against the enum (optional)
+      if (Object.values(BlogStatus).includes(statusParam as BlogStatus)) {
+        statusFilter = statusParam as BlogStatus;
+      } else {
+        return res.status(400).json({ error: "Invalid status value" });
+      }
+    }
+
     const search =
       typeof req.query.search === "string"
         ? req.query.search.trim()
         : undefined;
 
     // 2. Tenant selection
-    //    - Admins may override via ?tenant=all or ?tenant=foo
-    //    - Everyone else is locked to their own
     let tenantFilter: string;
     if (user.role === "ADMIN") {
       tenantFilter = (req.query.tenant as string) || "all";
-      console.log("tenant filter", tenantFilter);
     } else {
       tenantFilter = user.tenant;
     }
 
-    // 3. Fetch
+    // 3. Fetch (pass a single statusFilter)
     const result = await getDashboardBlogs(
       tenantFilter,
       page,
       limit,
       category,
-      statuses,
-      search
+      statusFilter,
+      search,
     );
 
     res.json(result);
@@ -139,7 +146,7 @@ export const getDashboardBlogsController = async (
 export const getPublicBlogByIdController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -155,7 +162,7 @@ export const getPublicBlogByIdController = async (
 export const uploadImageController = (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void => {
   try {
     const file = req.file as MulterS3File | undefined;
@@ -176,7 +183,7 @@ export const uploadImageController = (
 export const getDashboardBlogByIdController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -202,7 +209,7 @@ export const getDashboardBlogByIdController = async (
 export const updateBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -217,7 +224,7 @@ export const updateBlogController = async (
 export const deleteBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -231,15 +238,16 @@ export const deleteBlogController = async (
 export const searchBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    const { q } = req.query;
-    if (!q || typeof q !== "string") {
-      res.status(400).json({ error: "Query parameter 'q' is required" });
-      return;
-    }
-    const results = await searchBlogs(q);
+    // q: search string (optional → if empty, return all)
+    // tenant: tenant slug (optional → if provided, filter by tenant)
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const tenant =
+      typeof req.query.tenant === "string" ? req.query.tenant : undefined;
+
+    const results = await searchBlogs(q, tenant);
     res.status(200).json(results);
   } catch (error) {
     next(error);
@@ -248,11 +256,10 @@ export const searchBlogsController = async (
 export const updateBlogStatusController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant: string = (req as any).tenant || "main";
-    console.log("tenant ", tenant);
     const { status } = req.body;
     const { id } = req.params;
     console.log("id ", status);
@@ -270,7 +277,7 @@ export const updateBlogStatusController = async (
 export const getRelatedBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const tenant = (req as any).tenant || "main";

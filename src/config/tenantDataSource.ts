@@ -4,6 +4,7 @@ import { Blog } from "../models/Blog";
 import { BlogPage } from "../models/BlogPage";
 import { Category } from "../models/Category";
 import { Client } from "pg";
+import { SiteSetting } from "../models/SiteSetting";
 
 // In-memory cache for tenant DataSources
 const tenantDataSources: Record<string, DataSource> = {};
@@ -49,7 +50,7 @@ export async function getTenantDataSource(tenant: string): Promise<DataSource> {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
     schema: tenant, // Use the tenant (subdomain) as the schema name
-    entities: [ Blog, BlogPage, Category],
+    entities: [Blog, BlogPage, Category, SiteSetting],
     synchronize: true, // For development; use migrations in production
     logging: false,
   });

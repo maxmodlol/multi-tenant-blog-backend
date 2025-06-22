@@ -57,7 +57,7 @@ export const createUserController: RequestHandler = async (req, res, next) => {
       email,
       password,
       role,
-      targetDomain
+      targetDomain,
     );
 
     // 5) Respond (no return)
@@ -88,17 +88,11 @@ export const updateUserController: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    // 2) Only allow editing within the same tenant
-    if (domain && domain !== currentTenant) {
-      res.status(403).json({ error: "Cannot move user to a different tenant" });
-      return;
-    }
-
     // 3) Perform update
     const { user, link } = await updateUserWithRole(
       userId,
       { name, email, password, role, domain },
-      currentTenant
+      currentTenant,
     );
 
     // 4) Respond with updated DTO (no return!)

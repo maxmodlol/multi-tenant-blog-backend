@@ -7,7 +7,7 @@ export async function listTenants(): Promise<Tenant[]> {
 }
 
 export async function findTenantByDomain(
-  domain: string
+  domain: string,
 ): Promise<Tenant | null> {
   const repo = AppDataSource.getRepository(Tenant);
   return repo.findOne({ where: { domain } });

@@ -3,6 +3,7 @@ export enum BlogStatus {
   ACCEPTED = "ACCEPTED",
   DECLINED = "DECLINED",
   READY_TO_PUBLISH = "READY_TO_PUBLISH",
+  PENDING_REAPPROVAL = "PENDING_REAPPROVAL",
 }
 export interface BlogPageInput {
   pageNumber: number;

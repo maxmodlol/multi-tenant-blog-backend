@@ -12,14 +12,22 @@ export async function loginController(req: Request, res: Response) {
   const tenant = getTenantFromReq(req);
   const { email, password } = req.body;
 
+  console.log("🔐 login attempt →", { email, tenant });
+
   const found = await findUserWithRole(email, tenant);
   if (!found) {
+    console.log("❌ user not found or not linked to this tenant");
     res.status(401).json({ error: "Not Found" });
     return;
   }
+
   const { user, link } = found;
 
-  if (!(await bcrypt.compare(password, user.password))) {
+  const passwordMatches = await bcrypt.compare(password, user.password);
+  console.log("🔐 passwordMatches:", passwordMatches);
+
+  if (!passwordMatches) {
+    console.log("❌ bad credentials");
     res.status(401).json({ error: "Bad credentials" });
     return;
   }
@@ -35,10 +43,9 @@ export async function loginController(req: Request, res: Response) {
       maxAge: COOKIE_TTL,
       path: "/",
       domain: process.env.MAIN_DOMAIN || "localhost",
-    })
+    }),
   );
 
-  // **return the token in the JSON**
   res.json({
     user: {
       id: user.id,
@@ -47,10 +54,10 @@ export async function loginController(req: Request, res: Response) {
       role: link.role,
       tenant: link.tenant,
     },
-    token, // ← add this
+    token,
   });
-  console.log("token", token);
 }
+
 export const meController: RequestHandler = (req, res) => {
   if (!req.user) {
     res.status(401).json({ error: "Unauthenticated" });
@@ -74,7 +81,7 @@ export const logoutController: RequestHandler = (_req, res) => {
       maxAge: 0, // expire immediately
       path: "/",
       domain: process.env.MAIN_DOMAIN || "localhost",
-    })
+    }),
   );
   res.status(204).end(); // 204 No-Content
 };

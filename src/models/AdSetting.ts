@@ -1,3 +1,5 @@
+// src/models/AdSetting.ts
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -22,13 +24,14 @@ export enum Appearance {
 }
 
 @Entity()
-@Index(["tenantId", "blogId"])
+@Index(["blogId"])
 export class AdSetting {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: "uuid", nullable: true })
-  blogId?: string;
+  // Now only blogId is required; no tenantId
+  @Column({ type: "uuid", nullable: false })
+  blogId!: string;
 
   @Column({ type: "enum", enum: Placement })
   placement!: Placement;
@@ -42,6 +45,7 @@ export class AdSetting {
   @Column({ default: true })
   isEnabled!: boolean;
 
+  // For INLINE placement: how many words before injecting
   @Column({ type: "int", nullable: true })
   positionOffset?: number;
 

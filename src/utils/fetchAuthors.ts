@@ -21,6 +21,6 @@ export async function fetchAuthorsMap(authorIds: string[]) {
   const users = await repo.find({ where: { id: In(authorIds) } });
 
   return Object.fromEntries(
-    users.map((u) => [u.id, u.name]) // { "uuid" : "Ahmed" }
+    users.map((u) => [u.id, u.name]), // { "uuid" : "Ahmed" }
   );
 }

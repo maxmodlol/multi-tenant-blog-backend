@@ -23,7 +23,6 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
     throw new ApiError(400, "At least one page is required");
   if (!input.authorId) throw new ApiError(400, "Author ID is required");
   if (!input.tenant) throw new ApiError(400, "Tenant identifier is required");
-  console.log("input", input);
   // tenant‑scoped repositories
   const blogRepo = await getRepositoryForTenant(Blog, input.tenant);
   const categoryRepo = await getRepositoryForTenant(Category, input.tenant);
@@ -57,7 +56,7 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
 
   // pages ───────────────────────────────────────────────────────────────────
   blog.pages = input.pages.map(({ pageNumber, content }) =>
-    blogPageRepo.create({ pageNumber, content })
+    blogPageRepo.create({ pageNumber, content }),
   );
   await blogRepo.save(blog); // persist pages
 
@@ -80,7 +79,7 @@ export const getAllBlogs = async (
   tenant: string,
   page: number,
   limit: number,
-  categorySlug?: string
+  categorySlug?: string,
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string } })[];
   totalPages: number;
@@ -107,7 +106,6 @@ export const getAllBlogs = async (
   // ── Enrich with author profiles (public/User table) ──────────────────────
   const authorIds = [...new Set(blogs.map((b) => b.authorId))];
   const authorMap = await fetchAuthorsMap(authorIds);
-  console.log("authermpa0", authorMap);
   const enriched = blogs.map((b) => ({
     ...b,
     author: {
@@ -127,7 +125,7 @@ export const getBlogsForUser = async (
   authorId: string,
   page: number,
   limit: number,
-  categorySlug?: string
+  categorySlug?: string,
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string } })[];
   totalPages: number;
@@ -189,114 +187,112 @@ async function findTenantForBlog(blogId: string): Promise<string> {
 // New admin‐only “any tenant” loader
 // ——————————————————————————————————————————————————————
 export async function getAnyTenantBlogById(
-  id: string
+  id: string,
 ): Promise<Blog & { author: { id: string; name: string } }> {
   // 1️⃣ discover which tenant holds this ID
   const tenant = await findTenantForBlog(id);
   // 2️⃣ delegate to the single‐tenant loader
   return getBlogById(tenant, id);
 }
-// … above imports …
-async function getAllTenantSlugs(): Promise<string[]> {
-  // e.g. a Tenant model you maintain in your DB
-  const tenants = await AppDataSource.getRepository("Tenant").find();
-  return tenants.map((t: any) => t.domain);
-}
 
 export const getDashboardBlogs = async (
-  tenant: string, // could be "all" or a specific tenant slug
+  tenant: string, // "all" or a specific tenant slug
   page: number,
   limit: number,
   categorySlug?: string,
-  statuses: BlogStatus[] = [],
-  search?: string
+  statusFilter?: BlogStatus, // now a single status or undefined
+  search?: string,
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string }; tenant: string })[];
   totalPages: number;
   totalBlogs: number;
 }> => {
-  console.log("tenant dashboard", tenant);
-  // ─── Admin view across all tenants ───────────────────────────────────────
+  // Admin: aggregate across all tenants
   if (tenant === "all") {
-    const slugs = await getAllTenantSlugs();
-    console.log("slugs", slugs);
-    let combined: (Blog & {
+    // 1) fetch all tenant slugs from your Tenant table
+    const tenants = await AppDataSource.getRepository<Tenant>("Tenant").find();
+    const slugs = tenants.map((t) => t.domain);
+    const combined: (Blog & {
       author: { id: string; name: string };
       tenant: string;
     })[] = [];
 
-    // For each tenant, fetch without restricting status
     for (const t of slugs) {
-      console.log("t", t);
       const repo = await getRepositoryForTenant(Blog, t);
       let qb = repo
         .createQueryBuilder("blog")
         .leftJoinAndSelect("blog.pages", "pages")
         .leftJoinAndSelect("blog.categories", "categories");
 
-      if (statuses.length) {
-        qb = qb.andWhere("blog.status IN (:...statuses)", { statuses });
+      // apply single‐status filter
+      if (statusFilter) {
+        qb = qb.andWhere("blog.status = :statusFilter", { statusFilter });
       }
+
       if (categorySlug && categorySlug !== "all") {
         qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
       }
+
       if (search) {
         qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
       }
 
-      const blogs = await qb.getMany();
-      const authorIds = [...new Set(blogs.map((b) => b.authorId))];
+      const blogsForThisTenant = await qb.getMany();
+      const authorIds = [...new Set(blogsForThisTenant.map((b) => b.authorId))];
       const authorMap = await fetchAuthorsMap(authorIds);
 
       combined.push(
-        ...blogs.map((b) => ({
+        ...blogsForThisTenant.map((b) => ({
           ...b,
           author: {
             id: b.authorId,
             name: authorMap[b.authorId] ?? "مؤلف مجهول",
           },
           tenant: t,
-        }))
+        })),
       );
     }
 
-    // sort & paginate in-memory
+    // sort + pagination in‐memory
     combined.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     const totalBlogs = combined.length;
     const totalPages = Math.ceil(totalBlogs / limit);
-    const sliceStart = (page - 1) * limit;
-    const paged = combined.slice(sliceStart, sliceStart + limit);
+    const start = (page - 1) * limit;
+    const paged = combined.slice(start, start + limit);
 
     return { blogs: paged, totalBlogs, totalPages };
   }
 
-  // ─── Publisher/editor: single-tenant view ───────────────────────────────
+  // Publisher/editor: single‐tenant view
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   let qb = blogRepo
     .createQueryBuilder("blog")
     .leftJoinAndSelect("blog.pages", "pages")
     .leftJoinAndSelect("blog.categories", "categories");
 
-  if (statuses.length) {
-    qb = qb.where("blog.status IN (:...statuses)", { statuses });
+  // single‐status filter
+  if (statusFilter) {
+    qb = qb.where("blog.status = :statusFilter", { statusFilter });
   }
+
   if (categorySlug && categorySlug !== "all") {
     qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
   }
+
   if (search) {
     qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
   }
 
-  const [blogsRaw, totalBlogs] = await qb
+  const [rawBlogs, totalCount] = await qb
     .orderBy("blog.createdAt", "DESC")
     .skip((page - 1) * limit)
     .take(limit)
     .getManyAndCount();
 
-  const authorIds = [...new Set(blogsRaw.map((b) => b.authorId))];
+  const authorIds = [...new Set(rawBlogs.map((b) => b.authorId))];
   const authorMap = await fetchAuthorsMap(authorIds);
 
-  const enriched = blogsRaw.map((b) => ({
+  const enriched = rawBlogs.map((b) => ({
     ...b,
     author: { id: b.authorId, name: authorMap[b.authorId] ?? "مؤلف مجهول" },
     tenant,
@@ -304,15 +300,15 @@ export const getDashboardBlogs = async (
 
   return {
     blogs: enriched,
-    totalBlogs,
-    totalPages: Math.ceil(totalBlogs / limit),
+    totalBlogs: totalCount,
+    totalPages: Math.ceil(totalCount / limit),
   };
 };
 
 // Retrieve a specific approved blog by ID
 export const getBlogById = async (
   tenant: string,
-  id: string
+  id: string,
 ): Promise<Blog & { author: { id: string; name: string } }> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   const blog = await blogRepo.findOne({
@@ -329,15 +325,21 @@ export const getBlogById = async (
 export const updateBlog = async (
   tenant: string,
   id: string,
-  updateData: Partial<CreateBlogInput>
+  updateData: Partial<CreateBlogInput>,
 ): Promise<Blog> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   let blog = await blogRepo.findOne({
     where: { id },
     relations: ["pages", "categories"],
   });
+
   if (!blog) {
     throw new ApiError(404, "Blog not found");
+  }
+
+  // ✅ If the blog is accepted and being edited, mark it for re-approval
+  if (blog.status === BlogStatus.ACCEPTED) {
+    blog.status = BlogStatus.PENDING_REAPPROVAL;
   }
 
   // Destructure pages out of updateData so we don't merge a string[] into BlogPage[]
@@ -353,7 +355,7 @@ export const updateBlog = async (
     }
 
     const newPages = pages.map(({ pageNumber, content }) =>
-      blogPageRepo.create({ pageNumber, content })
+      blogPageRepo.create({ pageNumber, content }),
     );
     blog.pages = newPages;
   }
@@ -364,7 +366,6 @@ export const updateBlog = async (
 
 // Delete a blog
 export const deleteBlog = async (tenant: string, id: string): Promise<void> => {
-  console.log("tenant", tenant);
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   const result = await blogRepo.delete(id);
   if (result.affected === 0) {
@@ -374,21 +375,37 @@ export const deleteBlog = async (tenant: string, id: string): Promise<void> => {
 
 // Global search: only return approved blogs from the global index
 export const searchBlogs = async (
-  query: string
+  query: string,
+  tenant?: string,
 ): Promise<(GlobalBlogIndex & { url: string })[]> => {
   const globalRepo = AppDataSource.getRepository(GlobalBlogIndex);
 
-  const results = await globalRepo
-    .createQueryBuilder("index")
-    .where("index.title ILIKE :query OR index.tags ILIKE :query", {
-      query: `%${query}%`,
-    })
-    .orderBy("index.createdAt", "DESC")
-    .getMany();
+  // Build query builder dynamically
+  let qb = globalRepo.createQueryBuilder("index");
 
+  if (query) {
+    qb = qb.where("(index.title ILIKE :query OR index.tags ILIKE :query)", {
+      query: `%${query}%`,
+    });
+  }
+
+  if (tenant) {
+    if (query) {
+      qb = qb.andWhere("index.tenant = :tenant", { tenant });
+    } else {
+      qb = qb.where("index.tenant = :tenant", { tenant });
+    }
+  }
+
+  qb = qb.orderBy("index.createdAt", "DESC");
+
+  const results = await qb.getMany();
+
+  // Build URL per tenant/blogId
   const proto = process.env.NODE_ENV === "production" ? "https" : "http";
   const domain = process.env.NAVIGATION_DOMAIN ?? "localhost:3000";
-  const authors = await fetchAuthorsMap(results.map((r) => r.authorId));
+  const authorIds = results.map((r) => r.authorId);
+  const authors = await fetchAuthorsMap(authorIds);
 
   return results.map((r) => ({
     ...r,
@@ -404,25 +421,45 @@ export const searchBlogs = async (
 export const updateBlogStatus = async (
   tenant: string,
   id: string,
-  status: string
+  status: string,
 ): Promise<Blog> => {
-  if (
-    status !== BlogStatus.DRAFTED &&
-    status !== BlogStatus.READY_TO_PUBLISH &&
-    status !== BlogStatus.ACCEPTED &&
-    status !== BlogStatus.DECLINED
-  ) {
+  const validStatuses = [
+    BlogStatus.DRAFTED,
+    BlogStatus.READY_TO_PUBLISH,
+    BlogStatus.ACCEPTED,
+    BlogStatus.DECLINED,
+    BlogStatus.PENDING_REAPPROVAL, // ✅ allow new status
+  ];
+
+  if (!validStatuses.includes(status as BlogStatus)) {
     throw new ApiError(400, "Invalid status for publisher update");
   }
 
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
-  let blog = await blogRepo.findOne({ where: { id } });
+  const blog = await blogRepo.findOne({ where: { id } });
+
   if (!blog) {
     throw new ApiError(404, "Blog not found");
   }
 
+  const isReApproval =
+    blog.status === BlogStatus.PENDING_REAPPROVAL &&
+    status === BlogStatus.ACCEPTED;
+
   blog.status = status as BlogStatus;
   await blogRepo.save(blog);
+
+  // ✅ Only index if it's newly accepted or re-approved after edits
+  if (status === BlogStatus.ACCEPTED && isReApproval) {
+    await indexBlogPost({
+      blogId: blog.id,
+      tenant,
+      title: blog.title,
+      coverPhoto: blog.coverPhoto,
+      tags: blog.tags,
+    });
+  }
+
   return blog;
 };
 ///////////////////////////////////////////////////////////////////////////////
@@ -431,44 +468,65 @@ export const updateBlogStatus = async (
 export const getRelatedBlogs = async (
   tenant: string,
   currentBlogId: string,
-  limit = 4
+  limit = 4,
 ): Promise<(Blog & { author: { id: string; name: string } | undefined })[]> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
 
-  // 1) current blog (for tags / categories)
+  // 1) Fetch current blog (for tags / categories)
   const current = await blogRepo.findOne({
     where: { id: currentBlogId },
     relations: ["categories"],
   });
   if (!current) throw new ApiError(404, "Blog not found");
 
-  // 2) candidate query (same as before)  ………………………………………
   const categoryIds = current.categories.map((c) => c.id);
   const tags = current.tags ?? [];
 
+  // 2) Try to get blogs with matching categories or tags
   const qb = blogRepo
     .createQueryBuilder("blog")
     .leftJoinAndSelect("blog.categories", "cat")
     .where("blog.status = :status", { status: BlogStatus.ACCEPTED })
-    .andWhere("blog.id != :id", { id: currentBlogId })
-    .orderBy("blog.createdAt", "DESC")
-    .take(limit);
+    .andWhere("blog.id != :id", { id: currentBlogId });
 
   if (categoryIds.length)
     qb.andWhere("cat.id IN (:...categoryIds)", { categoryIds });
   if (tags.length)
     qb.andWhere(
       tags.map((_, i) => `blog.tags LIKE :t${i}`).join(" OR "),
-      tags.reduce((a, t, i) => ({ ...a, [`t${i}`]: `%${t}%` }), {})
+      tags.reduce((a, t, i) => ({ ...a, [`t${i}`]: `%${t}%` }), {}),
     );
 
-  const blogs = await qb.getMany();
+  qb.orderBy("blog.createdAt", "DESC").take(limit);
+  let blogs = await qb.getMany();
 
-  // 3) ─── grab all authorIds, fetch names in **one** query ─────────────────
+  // 3) If not enough, fallback to general recent blogs
+  if (blogs.length < limit) {
+    const fallbackQb = blogRepo
+      .createQueryBuilder("blog")
+      .where("blog.status = :status", { status: BlogStatus.ACCEPTED })
+      .andWhere("blog.id != :id", { id: currentBlogId })
+      .orderBy("blog.createdAt", "DESC")
+      .take(limit);
+
+    const fallback = await fallbackQb.getMany();
+
+    // Merge + dedupe (by ID), maintaining order
+    const seen = new Set();
+    blogs = [...blogs, ...fallback]
+      .filter((b) => {
+        if (b.id === currentBlogId) return false; // <-- force exclude current blog
+        if (seen.has(b.id)) return false;
+        seen.add(b.id);
+        return true;
+      })
+      .slice(0, limit);
+  }
+
+  // 4) Fetch author names in one query
   const authorIds = [...new Set(blogs.map((b) => b.authorId))];
   const authorMap = await fetchAuthorsMap(authorIds);
 
-  // 4) ─── attach author object and return ──────────────────────────────────
   return blogs.map((b) => ({
     ...b,
     author: b.authorId

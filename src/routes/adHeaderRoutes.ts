@@ -4,13 +4,19 @@ import {
   getAdHeaderController,
   upsertAdHeaderController,
 } from "../controller/adHeaderController";
-import tenantMiddleware from "../middleware/tenantMiddleware";
 import { jwtAuth } from "../middleware/jwtAuth";
+import { roleAuthorization } from "../middleware/roleAuthorization";
+import { Role } from "../types/Role";
 
 const router = Router();
-router.use(tenantMiddleware);
-router.use(jwtAuth());
+
+// Only ADMIN can change or view this singleton
 
 router.get("/", getAdHeaderController);
-router.post("/", upsertAdHeaderController);
+router.post(
+  "/",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  upsertAdHeaderController,
+);
 export default router;

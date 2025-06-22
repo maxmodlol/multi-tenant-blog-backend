@@ -1,26 +1,26 @@
-import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
+// src/services/adHeaderService.ts
+import { AppDataSource } from "../config/data-source";
 import { AdHeaderSetting } from "../models/AdHeaderSetting";
+import { ApiError } from "../utils/ApiError";
 
-export async function getAdHeaderSetting(
-  tenant: string
-): Promise<AdHeaderSetting | null> {
-  const repo = await getRepositoryForTenant(AdHeaderSetting, tenant);
-  return repo.findOne({ where: { tenantId: tenant } });
+export async function getAdHeaderSetting(): Promise<AdHeaderSetting | null> {
+  const repo = AppDataSource.getRepository(AdHeaderSetting);
+  return repo.findOne({ where: {} }); // returns the single row, or null
 }
 
-export async function upsertAdHeaderSetting(
-  tenant: string,
-  input: { headerSnippet: string; isEnabled?: boolean }
-): Promise<AdHeaderSetting> {
-  const repo = await getRepositoryForTenant(AdHeaderSetting, tenant);
-  let existing = await repo.findOne({ where: { tenantId: tenant } });
+export async function upsertAdHeaderSetting(input: {
+  headerSnippet: string;
+  isEnabled?: boolean;
+}): Promise<AdHeaderSetting> {
+  const repo = AppDataSource.getRepository(AdHeaderSetting);
+  const existing = await repo.findOne({ where: {} });
+
   if (existing) {
     existing.headerSnippet = input.headerSnippet;
     existing.isEnabled = input.isEnabled ?? existing.isEnabled;
     return repo.save(existing);
   } else {
     const newOne = repo.create({
-      tenantId: tenant,
       headerSnippet: input.headerSnippet,
       isEnabled: input.isEnabled ?? true,
     });

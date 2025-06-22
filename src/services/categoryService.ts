@@ -4,7 +4,7 @@ import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
 
 export const createCategory = async (
   tenant: string,
-  name: string
+  name: string,
 ): Promise<Category> => {
   try {
     const categoryRepo = await getRepositoryForTenant(Category, tenant);
@@ -33,7 +33,7 @@ export const getAllCategories = async (tenant: string): Promise<Category[]> => {
 
 export const getCategoryById = async (
   tenant: string,
-  id: string
+  id: string,
 ): Promise<Category> => {
   try {
     const categoryRepo = await getRepositoryForTenant(Category, tenant);
@@ -50,7 +50,7 @@ export const getCategoryById = async (
 export const updateCategory = async (
   tenant: string,
   id: string,
-  name: string
+  name: string,
 ): Promise<Category> => {
   try {
     const categoryRepo = await getRepositoryForTenant(Category, tenant);
@@ -72,7 +72,7 @@ export const updateCategory = async (
 
 export const deleteCategory = async (
   tenant: string,
-  id: string
+  id: string,
 ): Promise<void> => {
   const categoryRepo = await getRepositoryForTenant(Category, tenant);
 

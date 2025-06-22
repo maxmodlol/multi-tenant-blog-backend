@@ -1,22 +1,24 @@
+// src/config/data-source.ts
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { User } from "../models/User";
 import { config } from "dotenv";
-import { GlobalBlogIndex } from "../models/GlobalBlogIndex";
+import { User } from "../models/User";
 import { Blog } from "../models/Blog";
 import { BlogPage } from "../models/BlogPage";
 import { Category } from "../models/Category";
+import { GlobalBlogIndex } from "../models/GlobalBlogIndex";
 import { TenantUser } from "../models/TenantUser";
 import { Tenant } from "../models/Tenant";
 import { AdSetting } from "../models/AdSetting";
 import { AdHeaderSetting } from "../models/AdHeaderSetting";
+import { SiteSetting } from "../models/SiteSetting";
 
 config();
 
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "5432"),
+  port: +process.env.DB_PORT! || 5432,
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
@@ -30,7 +32,9 @@ export const AppDataSource = new DataSource({
     Tenant,
     AdSetting,
     AdHeaderSetting,
+    SiteSetting,
   ],
-  synchronize: true, // For development only; use migrations in production
+  synchronize: false, // ← turn this off
+  migrations: [__dirname + "/../migrations/*{.ts,.js}"], // ← add this
   logging: false,
 });

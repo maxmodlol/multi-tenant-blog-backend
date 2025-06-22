@@ -13,15 +13,21 @@ import { upload } from "../middleware/upload";
 
 const dash = Router();
 
-//—all dashboard routes require auth
-dash.use(jwtAuth());
+dash.use(jwtAuth()); // protect everything below
 
-dash.get("/", getDashboardBlogsController);
-dash.get("/:id", getDashboardBlogByIdController);
-dash.post("/", upload.single("coverPhoto"), createBlogController);
+// LIST blogs
+dash.get("/", getDashboardBlogsController); // GET    /api/dashboard/blogs
 
-dash.patch("/:id", updateBlogController);
-dash.patch("/:id/status", updateBlogStatusController);
-dash.delete("/:id", deleteBlogController);
+// CREATE blog
+dash.post("/", upload.single("coverPhoto"), createBlogController); // POST   /api/dashboard/blogs
+
+// SINGLE blog operations
+dash.get("/:id", getDashboardBlogByIdController); // GET    /api/dashboard/blogs/:id
+dash.patch("/:id", updateBlogController); // PATCH  /api/dashboard/blogs/:id
+dash.patch("/:id/status", updateBlogStatusController); // PATCH  /api/dashboard/blogs/:id/status
+dash.delete("/:id", deleteBlogController); // DELETE /api/dashboard/blogs/:id
+
+// UPLOAD image (keep **before** any "/:id" POST routes to avoid conflicts)
 dash.post("/upload-image", upload.single("file"), uploadImageController);
+
 export default dash;

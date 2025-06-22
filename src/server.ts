@@ -16,7 +16,8 @@ import headerRouter from "./routes/adHeaderRoutes";
 import publicRouter from "./routes/blogsRoutes";
 import dashboardRouter from "./routes/dashboardRoutes";
 import tenantRoutes from "./routes/tenantRoutes";
-
+import siteSettingRoutes from "./routes/siteSettingRoutes";
+import uploadRoutes from "./routes/uploadRoutes";
 const app = express();
 
 // ✅ Read main domain from .env (e.g., 'localhost' or 'yourdomain.com')
@@ -51,10 +52,13 @@ const corsOptions = {
   },
   credentials: true, // ✅ Allows cookies & authentication headers
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-tenant"],
   optionsSuccessStatus: 204, // ✅ Prevents CORS preflight issues
 };
-
+app.use((req, _res, next) => {
+  if (req.headers["x-tenant"]) (req as any).tenant = req.headers["x-tenant"];
+  next();
+});
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
@@ -65,11 +69,17 @@ app.use(express.json());
 app.use(tenantMiddleware);
 
 // ✅ Mount API Routes
+app.get("/health", (_req, res) => {
+  res.status(200).send("OK");
+});
+app.use("/api/settings/uploadLogo", uploadRoutes);
 app.use("/api/settings/users", userRoutes);
 app.use("/api/settings/ads", adRouter);
 app.use("/api/settings/ads/header", headerRouter);
-app.use("/api/auth", authRoutes);
+app.use("/api/settings/site", siteSettingRoutes);
 app.use("/api/dashboard/blogs", dashboardRouter);
+
+app.use("/api/auth", authRoutes);
 
 app.use("/api/blogs", publicRouter);
 app.use("/api/categories", categoryRoutes);

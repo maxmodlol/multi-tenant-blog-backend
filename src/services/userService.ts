@@ -17,7 +17,7 @@ export async function createUserWithRole(
   email: string,
   password: string,
   role: Role,
-  domain: string
+  domain: string,
 ) {
   const userRepo = AppDataSource.getRepository(User);
   const linkRepo = AppDataSource.getRepository(TenantUser);
@@ -42,7 +42,7 @@ export async function createUserWithRole(
   const user = userRepo.create({
     name,
     email,
-    password: await bcrypt.hash(password, 10),
+    password,
   });
   await userRepo.save(user);
 
@@ -98,7 +98,7 @@ export async function updateUserWithRole(
     role?: Role;
     domain?: string;
   },
-  currentTenant: string
+  currentTenant: string,
 ): Promise<{ user: User; link: TenantUser }> {
   const userRepo = AppDataSource.getRepository(User);
   const linkRepo = AppDataSource.getRepository(TenantUser);
@@ -117,14 +117,14 @@ export async function updateUserWithRole(
   // 3) Update name/password
   if (updates.name) user.name = updates.name;
   if (updates.password) {
-    user.password = await bcrypt.hash(updates.password, 10);
+    user.password = updates.password;
   }
 
   await userRepo.save(user);
 
   // 4) Find existing TenantUser link for this tenant
   const link = await linkRepo.findOne({
-    where: { tenant: currentTenant, userId },
+    where: { userId },
   });
   if (!link) throw new ApiError(400, "User is not a member of this tenant");
 

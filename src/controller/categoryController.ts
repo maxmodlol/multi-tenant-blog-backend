@@ -10,7 +10,7 @@ import {
 export const createCategoryController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { name } = req.body;
@@ -30,7 +30,7 @@ export const createCategoryController = async (
 export const getAllCategoriesController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant: string = (req as any).tenant || "main";
@@ -44,7 +44,7 @@ export const getAllCategoriesController = async (
 export const getCategoryByIdController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant: string = (req as any).tenant || "main";
@@ -58,7 +58,7 @@ export const getCategoryByIdController = async (
 export const updateCategoryController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { name } = req.body;
@@ -77,7 +77,7 @@ export const updateCategoryController = async (
 export const deleteCategoryController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const tenant: string = (req as any).tenant || "main";

@@ -1,8 +1,12 @@
 import { Request } from "express";
-import { ParamsDictionary } from "express-serve-static-core";
 
-type TenantParams = ParamsDictionary & { tenant?: string };
+export function getTenantFromReq(req: Request): string {
+  const host = req.hostname || req.headers.host || "";
+  const hostname = host.split(":")[0];
+  const parts = hostname.split(".");
+  console.log("gettenant  ", host, "hostname", hostname);
 
-export function getTenantFromReq(req: Request<TenantParams>) {
-  return req.params.tenant ?? "main";
+  if (hostname === "localhost" || parts.length === 1) return "main";
+
+  return parts[0];
 }

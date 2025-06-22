@@ -1,340 +1,349 @@
 {
-    "openapi": "3.0.0",
-    "info": {
-      "title": "Multi-Tenant Blog API",
-      "version": "1.0.0",
-      "description": "API documentation for the multi-tenant blog backend"
-    },
-    "servers": [
-      {
-        "url": "http://localhost:5000",
-        "description": "Local server"
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Multi-Tenant Blog API",
+    "version": "1.0.0",
+    "description": "API documentation for the multi-tenant blog backend"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
-    ],
-    "components": {
-      "securitySchemes": {
-        "bearerAuth": {
-          "type": "http",
-          "scheme": "bearer",
-          "bearerFormat": "JWT"
+    },
+    "schemas": {
+      "Blog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "coverPhoto": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "authorId": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"]
+          },
+          "pages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BlogPage" }
+          },
+          "categories": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Category" }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
-      "schemas": {
-        "Blog": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "title": { "type": "string" },
-            "coverPhoto": { "type": "string" },
-            "tags": {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "authorId": { "type": "string" },
-            "status": { 
-              "type": "string", 
-              "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"] 
-            },
-            "pages": {
-              "type": "array",
-              "items": { "$ref": "#/components/schemas/BlogPage" }
-            },
-            "categories": {
-              "type": "array",
-              "items": { "$ref": "#/components/schemas/Category" }
-            },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "updatedAt": { "type": "string", "format": "date-time" }
-          }
-        },
-        "BlogPage": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "pageNumber": { "type": "integer" },
-            "content": { "type": "string" },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "updatedAt": { "type": "string", "format": "date-time" }
-          }
-        },
-        "Category": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "name": { "type": "string" }
-          }
-        },
-        "GlobalBlogIndex": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "blogId": { "type": "string" },
-            "tenant": { "type": "string" },
-            "title": { "type": "string" },
-            "coverPhoto": { "type": "string" },
-            "tags": {
-              "type": "array",
-              "items": { "type": "string" }
-            },
-            "status": { 
-              "type": "string", 
-              "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"]
-            },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "updatedAt": { "type": "string", "format": "date-time" }
-          }
+      "BlogPage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "pageNumber": { "type": "integer" },
+          "content": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      },
+      "GlobalBlogIndex": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "blogId": { "type": "string" },
+          "tenant": { "type": "string" },
+          "title": { "type": "string" },
+          "coverPhoto": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       }
-    },
-    "security": [
-      {
-        "bearerAuth": []
-      }
-    ],
-    "paths": {
-      "/api/blog": {
-        "post": {
-          "summary": "Create a new blog",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/blog": {
+      "post": {
+        "summary": "Create a new blog",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "coverPhoto": { "type": "string" },
+                  "tags": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "categoryNames": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "pages": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "authorId": { "type": "string" },
+                  "tenant": { "type": "string" },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFTED",
+                      "ACCEPTED",
+                      "DECLINED",
+                      "READY_TO_PUBLISH"
+                    ]
+                  }
+                },
+                "example": {
+                  "title": "My Publisher Blog",
+                  "coverPhoto": "https://example.com/cover.jpg",
+                  "tags": ["tech", "update"],
+                  "categoryNames": ["Technology", "Announcements"],
+                  "pages": [
+                    "<p>This is the content of page 1.</p>",
+                    "<p>This is the content of page 2.</p>"
+                  ],
+                  "authorId": "global-user-uuid-here",
+                  "tenant": "publisher1",
+                  "status": "DRAFTED"
+                }
+              }
             }
-          ],
-          "requestBody": {
-            "required": true,
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Blog created successfully"
+          },
+          "400": {
+            "description": "Missing required fields or invalid input"
+          }
+        }
+      },
+      "get": {
+        "summary": "Retrieve all blogs",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of blogs",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "title": { "type": "string" },
-                    "coverPhoto": { "type": "string" },
-                    "tags": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "categoryNames": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "pages": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "authorId": { "type": "string" },
-                    "tenant": { "type": "string" },
-                    "status": { 
-                      "type": "string", 
-                      "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"]
-                    }
-                  },
-                  "example": {
-                    "title": "My Publisher Blog",
-                    "coverPhoto": "https://example.com/cover.jpg",
-                    "tags": ["tech", "update"],
-                    "categoryNames": ["Technology", "Announcements"],
-                    "pages": [
-                      "<p>This is the content of page 1.</p>",
-                      "<p>This is the content of page 2.</p>"
-                    ],
-                    "authorId": "global-user-uuid-here",
-                    "tenant": "publisher1",
-                    "status": "DRAFTED"
-                  }
-                }
-              }
-            }
-          },
-          "responses": {
-            "201": {
-              "description": "Blog created successfully"
-            },
-            "400": {
-              "description": "Missing required fields or invalid input"
-            }
-          }
-        },
-        "get": {
-          "summary": "Retrieve all blogs",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "A list of blogs",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "array",
-                    "items": { "$ref": "#/components/schemas/Blog" }
-                  }
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Blog" }
                 }
               }
             }
           }
         }
-      },
-      "/api/blog/{id}": {
-        "get": {
-          "summary": "Retrieve a blog by ID",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "parameters": [
-            {
-              "name": "id",
-              "in": "path",
-              "required": true,
-              "schema": { "type": "string" }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "Blog found",
-              "content": {
-                "application/json": {
-                  "schema": { "$ref": "#/components/schemas/Blog" }
-                }
-              }
-            },
-            "404": {
-              "description": "Blog not found"
-            }
+      }
+    },
+    "/api/blog/{id}": {
+      "get": {
+        "summary": "Retrieve a blog by ID",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
           }
-        },
-        "patch": {
-          "summary": "Update a blog",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "parameters": [
-            {
-              "name": "id",
-              "in": "path",
-              "required": true,
-              "schema": { "type": "string" }
-            }
-          ],
-          "requestBody": {
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
             "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blog found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Blog" }
               }
             }
           },
-          "responses": {
-            "200": { "description": "Blog updated successfully" },
-            "400": { "description": "Invalid input" },
-            "404": { "description": "Blog not found" }
-          }
-        },
-        "delete": {
-          "summary": "Delete a blog",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "parameters": [
-            {
-              "name": "id",
-              "in": "path",
-              "required": true,
-              "schema": { "type": "string" }
-            }
-          ],
-          "responses": {
-            "204": { "description": "Blog deleted successfully" },
-            "404": { "description": "Blog not found" }
+          "404": {
+            "description": "Blog not found"
           }
         }
       },
-      "/api/blog/{id}/status": {
-        "patch": {
-          "summary": "Update the status of a blog",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "parameters": [
-            {
-              "name": "id",
-              "in": "path",
-              "required": true,
-              "schema": { "type": "string" }
-            }
-          ],
-          "requestBody": {
+      "patch": {
+        "summary": "Update a blog",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
             "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Blog" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Blog updated successfully" },
+          "400": { "description": "Invalid input" },
+          "404": { "description": "Blog not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a blog",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Blog deleted successfully" },
+          "404": { "description": "Blog not found" }
+        }
+      }
+    },
+    "/api/blog/{id}/status": {
+      "patch": {
+        "summary": "Update the status of a blog",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFTED",
+                      "ACCEPTED",
+                      "DECLINED",
+                      "READY_TO_PUBLISH"
+                    ]
+                  }
+                },
+                "example": { "status": "READY_TO_PUBLISH" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Blog status updated" },
+          "400": { "description": "Invalid status" },
+          "404": { "description": "Blog not found" }
+        }
+      }
+    },
+    "/api/blog/search": {
+      "get": {
+        "summary": "Search blogs by query",
+        "tags": ["Blog"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": { 
-                      "type": "string", 
-                      "enum": ["DRAFTED", "ACCEPTED", "DECLINED", "READY_TO_PUBLISH"]
-                    }
-                  },
-                  "example": { "status": "READY_TO_PUBLISH" }
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/GlobalBlogIndex" }
                 }
               }
             }
           },
-          "responses": {
-            "200": { "description": "Blog status updated" },
-            "400": { "description": "Invalid status" },
-            "404": { "description": "Blog not found" }
-          }
-        }
-      },
-      "/api/blog/search": {
-        "get": {
-          "summary": "Search blogs by query",
-          "tags": ["Blog"],
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "parameters": [
-            {
-              "name": "q",
-              "in": "query",
-              "required": true,
-              "schema": { "type": "string" }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "Search results",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "array",
-                    "items": { "$ref": "#/components/schemas/GlobalBlogIndex" }
-                  }
-                }
-              }
-            },
-            "400": { "description": "Query parameter 'q' is required" }
-          }
+          "400": { "description": "Query parameter 'q' is required" }
         }
       }
     }
   }
-  
+}
