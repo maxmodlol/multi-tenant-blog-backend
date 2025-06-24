@@ -8,7 +8,7 @@ export async function getRepositoryForTenant<Entity extends ObjectLiteral>(
 ): Promise<Repository<Entity>> {
   console.log("tenet now ", tenant);
   const dataSource =
-    tenant === "alnashra" ? AppDataSource : await getTenantDataSource(tenant);
+    tenant === "main" ? AppDataSource : await getTenantDataSource(tenant);
   return dataSource.getRepository(entity);
 }
 

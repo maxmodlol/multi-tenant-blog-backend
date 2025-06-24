@@ -1,32 +1,62 @@
+// src/middleware/tenantMiddleware.ts
+
 import { Request, Response, NextFunction } from "express";
 
-// src/middleware/tenantMiddleware.ts
-const mainDomain = process.env.MAIN_DOMAIN || "localhost"; // e.g. localhost
+// ✅ In your .env.production (or in Plesk’s Custom env vars) set:
+//    MAIN_DOMAIN=alnashra.co
+const MAIN_DOMAIN = process.env.MAIN_DOMAIN!;
+
+// Any subdomains here should map to the global “main” tenant:
+const RESERVED = ["www", "api", "admin", "auth"];
 
 function extractTenant(hostHeader: string | undefined) {
   if (!hostHeader) return "main";
 
-  const hostname = hostHeader.split(":")[0]; // drop :3000
-  const host = hostname.replace(/:\d+$/, ""); // safety
+  const hostname = hostHeader.split(":")[0].toLowerCase().trim();
+  const parts = hostname.split(".");
 
-  // dev-mode special case ── publisher1.localhost
-  if (host.endsWith(".localhost")) {
-    const [sub] = host.split(".");
-    return sub || "main";
+  // 1. localhost or no dot => main
+  if (hostname === "localhost" || parts.length === 1) {
+    return "main";
   }
 
-  // prod ── publisher1.mynashra.com
-  if (host === mainDomain || host === `www.${mainDomain}`) return "main";
-  if (host.endsWith(`.${mainDomain}`)) return host.split(".")[0];
+  // 2. any reserved service name => main
+  if (RESERVED.includes(parts[0])) {
+    return "main";
+  }
 
+  // 3. publisher subdomain in dev
+  if (hostname.endsWith(`.localhost`)) {
+    return parts[0];
+  }
+
+  // 4. production root or www => main
+  if (hostname === MAIN_DOMAIN || hostname === `www.${MAIN_DOMAIN}`) {
+    return "main";
+  }
+
+  // 5. real publisher subdomain => first segment
+  if (hostname.endsWith(`.${MAIN_DOMAIN}`)) {
+    return parts[0];
+  }
+
+  // fallback
   return "main";
 }
 
-const tenantMiddleware = (req: Request, _: Response, next: NextFunction) => {
-  if ((req as any).tenant) return next();
+export default function tenantMiddleware(
+  req: Request,
+  _: Response,
+  next: NextFunction
+) {
+  // already set by x-tenant header?
+  if ((req as any).tenant) {
+    return next();
+  }
 
   (req as any).tenant = extractTenant(req.headers.host);
+  console.log(
+    `[TENANT] host=${req.headers.host} → tenant= ${(req as any).tenant}`
+  );
   next();
-};
-
-export default tenantMiddleware;
+}
