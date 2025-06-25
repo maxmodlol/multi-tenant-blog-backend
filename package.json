@@ -14,6 +14,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --check .",
     "seed:superadmin": "ts-node -r tsconfig-paths/register src/scripts/seedSuperAdmin.ts",
+    "seed:main": "ts-node -r tsconfig-paths/register src/scripts/seedMainTenant.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "clean": "rimraf dist node_modules/.cache",
     "migration:generate": "npm run typeorm -- -d src/config/data-source.ts migration:generate src/migrations/Init",
