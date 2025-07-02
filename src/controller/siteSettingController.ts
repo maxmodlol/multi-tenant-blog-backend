@@ -7,61 +7,55 @@ import {
 import { ApiError } from "../utils/ApiError";
 import { getTenantFromReq } from "../utils/getTenantFromReq";
 
+/* ────────────────────────────────────────────────────────────────
+ * GET (unchanged)
+ * ────────────────────────────────────────────────────────────────*/
 export const getSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   try {
-    // Use req.hostname to drop any port number automatically.
-    // On "publisher1.localhost:5000" → req.hostname === "publisher1.localhost"
-    // On "localhost:5000" → req.hostname === "localhost"
-    const tenant = (req as any).tenant;
-    console.log("sdas", req.headers["x-tenant"]), tenant;
-
-    console.log("tenant setting ", tenant);
+    const tenant = (req as any).tenant ?? getTenantFromReq(req);
     const setting = await getOrCreateSiteSetting(tenant);
-    console.log("setting", setting);
     res.status(200).json(setting);
   } catch (err) {
     next(err);
   }
 };
 
-/**
- * Expects JSON body:
- * {
- *   id: string,
- *   logoLightUrl?: string,
- *   logoDarkUrl?: string,
- *   baseColor: "H S% L%"
- * }
- */
+/* ────────────────────────────────────────────────────────────────
+ * PUT /settings/site
+ * ────────────────────────────────────────────────────────────────*/
 export const updateSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    // Again, pull tenant from req.hostname (not including port).
     const tenant = getTenantFromReq(req);
-    console.log("🔧 [updateSiteSetting] tenant =", tenant);
-    const id = req.body.id;
+    const { id } = req.body;
     if (!id) {
       return res.status(400).json({ error: "id body is required" });
     }
 
-    const { logoLightUrl, logoDarkUrl, baseColor } = req.body;
-    if (!baseColor || typeof baseColor !== "string") {
-      return res.status(400).json({ error: "baseColor is required" });
-    }
+    /* -------- extract optional fields ---------- */
+    const { logoLightUrl, logoDarkUrl, baseColor, headerStyle, headerColor } =
+      req.body as Record<string, unknown>;
 
-    const updates: any = { baseColor };
+    /* -------- build updates obj dynamically ---- */
+    const updates: Record<string, unknown> = {};
     if (typeof logoLightUrl === "string") updates.logoLightUrl = logoLightUrl;
     if (typeof logoDarkUrl === "string") updates.logoDarkUrl = logoDarkUrl;
+    if (typeof baseColor === "string") updates.baseColor = baseColor;
+    if (headerStyle === "gradient" || headerStyle === "solid")
+      updates.headerStyle = headerStyle;
+    if (typeof headerColor === "string" || headerColor === null)
+      updates.headerColor = headerColor;
 
-    const updated = await updateSiteSetting(tenant, id, updates);
-    res.status(200).json(updated);
+    /* hand off to service (which does strict validation) */
+    const dto = await updateSiteSetting(tenant, id, updates);
+    res.status(200).json(dto);
   } catch (err) {
     if (err instanceof ApiError) {
       return res.status(err.status).json({ error: err.message });

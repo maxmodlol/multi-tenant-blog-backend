@@ -26,7 +26,15 @@ export class SiteSetting {
    */
   @Column({ type: "varchar", length: 32, default: "240 20% 50%" })
   baseColor!: string;
-
+  @Column({ type: "varchar", length: 16, default: "gradient" })
+  headerStyle!: "gradient" | "solid";
+  /**
+   * Optional per-tenant override when `headerStyle === "solid"`.
+   * Stored in the same “H S% L%” format we already use.
+   * If null we fall back to the tenant’s baseColor.
+   */
+  @Column({ type: "varchar", length: 32, nullable: true })
+  headerColor?: string | null;
   @CreateDateColumn()
   createdAt!: Date;
 
