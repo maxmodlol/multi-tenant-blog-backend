@@ -29,28 +29,17 @@ export async function createTenantAdSetting(
       userRoles?: string[];
       deviceTypes?: string[];
     };
-  },
+  }
 ): Promise<TenantAdSetting> {
   try {
-    console.log("🔍 createTenantAdSetting: Starting with:", {
-      tenantId,
-      input,
-    });
-
     // Use the tenantId from input if provided, otherwise use the current tenant context
     const targetTenantId = input.tenantId || tenantId;
-    console.log("🔍 createTenantAdSetting: Target tenant ID:", targetTenantId);
 
     // For main website ads, we'll store them with a special identifier
     const finalTenantId = targetTenantId === "main" ? "main" : targetTenantId;
-    console.log("🔍 createTenantAdSetting: Final tenant ID:", finalTenantId);
 
-    console.log(
-      "🔍 createTenantAdSetting: Getting repository from main AppDataSource...",
-    );
     // Use the main AppDataSource instead of getRepositoryForTenant to avoid metadata issues
     const repo = AppDataSource.getRepository(TenantAdSetting);
-    console.log("🔍 createTenantAdSetting: Repository obtained");
 
     const ad = repo.create({
       tenantId: finalTenantId,
@@ -63,13 +52,10 @@ export async function createTenantAdSetting(
       description: input.description,
       targetingRules: input.targetingRules,
     });
-    console.log("🔍 createTenantAdSetting: Ad entity created");
 
     const result = await repo.save(ad);
-    console.log("🔍 createTenantAdSetting: Ad saved successfully:", result.id);
     return result;
   } catch (error) {
-    console.error("❌ createTenantAdSetting: Error occurred:", error);
     throw error;
   }
 }
@@ -78,7 +64,7 @@ export async function createTenantAdSetting(
  * Get all tenant ads for a specific tenant
  */
 export async function getTenantAdSettings(
-  tenantId: string,
+  tenantId: string
 ): Promise<TenantAdSetting[]> {
   // Use the main AppDataSource for consistency
   const repo = AppDataSource.getRepository(TenantAdSetting);
@@ -93,28 +79,16 @@ export async function getTenantAdSettings(
  */
 export async function getAllTenantAdSettings(): Promise<TenantAdSetting[]> {
   try {
-    console.log("🔍 getAllTenantAdSettings: Starting...");
-
     // For dashboard, we need to get ads from all tenants
     // Since we're in the main context, we'll use the main AppDataSource
-    console.log("🔍 getAllTenantAdSettings: Getting repository...");
     const repo = AppDataSource.getRepository(TenantAdSetting);
-    console.log(
-      "🔍 getAllTenantAdSettings: Repository obtained, executing query...",
-    );
 
     const result = await repo.find({
       order: { priority: "DESC", createdAt: "ASC" },
     });
 
-    console.log(
-      "🔍 getAllTenantAdSettings: Query successful, found",
-      result.length,
-      "ads",
-    );
     return result;
   } catch (error) {
-    console.error("❌ getAllTenantAdSettings: Error occurred:", error);
     throw error;
   }
 }
@@ -124,7 +98,7 @@ export async function getAllTenantAdSettings(): Promise<TenantAdSetting[]> {
  */
 export async function getTenantAdsByPlacement(
   tenantId: string,
-  placement: TenantAdPlacement,
+  placement: TenantAdPlacement
 ): Promise<TenantAdSetting[]> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
   return repo.find({
@@ -138,7 +112,7 @@ export async function getTenantAdsByPlacement(
  */
 export async function getTenantAdsForPageType(
   tenantId: string,
-  pageType: string,
+  pageType: string
 ): Promise<TenantAdSetting[]> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
 
@@ -186,7 +160,7 @@ export async function updateTenantAdSetting(
       userRoles?: string[];
       deviceTypes?: string[];
     };
-  }>,
+  }>
 ): Promise<TenantAdSetting> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
   const ad = await repo.findOne({ where: { id, tenantId } });
@@ -202,7 +176,7 @@ export async function updateTenantAdSetting(
  */
 export async function deleteTenantAdSetting(
   tenantId: string,
-  id: string,
+  id: string
 ): Promise<void> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
   const result = await repo.delete({ id, tenantId });
@@ -218,7 +192,7 @@ export async function deleteTenantAdSetting(
 export async function getTenantAdsForPage(
   tenantId: string,
   pageType: string,
-  placements?: TenantAdPlacement[],
+  placements?: TenantAdPlacement[]
 ): Promise<Record<string, TenantAdSetting[]>> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
 

@@ -81,7 +81,9 @@ export const createUserController: RequestHandler = async (req, res, next) => {
           : currentDomain;
 
     if (role === Role.PUBLISHER && !domain) {
-      res.status(400).json({ error: "domain is required for publishers" });
+      res
+        .status(400)
+        .json({ error: "Please select a tenant for the publisher" });
       return;
     }
 
@@ -110,7 +112,7 @@ export const createUserController: RequestHandler = async (req, res, next) => {
       email,
       password,
       role,
-      targetDomain,
+      targetDomain
     );
 
     // 5) Respond (no return)
@@ -145,7 +147,7 @@ export const updateUserController: RequestHandler = async (req, res, next) => {
     const { user, link } = await updateUserWithRole(
       userId,
       { name, email, password, role, domain },
-      currentTenant,
+      currentTenant
     );
 
     // 4) Respond with updated DTO (no return!)
@@ -178,7 +180,7 @@ export const deleteUserController: RequestHandler = async (req, res, next) => {
 export const checkEmailAvailability: RequestHandler = async (
   req,
   res,
-  next,
+  next
 ) => {
   try {
     const email = (req.query.email as string | undefined)?.trim().toLowerCase();

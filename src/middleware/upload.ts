@@ -12,6 +12,7 @@ const s3 = new S3Client({
   },
 });
 
+// General upload configuration (for logos, blog images, etc.)
 export const upload = multer({
   storage: multerS3({
     s3,
@@ -36,4 +37,28 @@ export const upload = multer({
     cb(null, allowed.includes(file.mimetype));
   },
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB limit — adjust as you like
+});
+
+// Avatar upload configuration (no size limit, accepts all image types)
+export const avatarUpload = multer({
+  storage: multerS3({
+    s3,
+    bucket: process.env.S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    cacheControl: "public,max-age=31536000",
+    key: (_req, file, cb) => {
+      const ext = file.originalname.split(".").pop();
+      cb(null, `avatars/${randomUUID()}.${ext}`); // Store avatars in separate folder
+    },
+  }),
+  fileFilter: (_req, file, cb) => {
+    // Accept any image type
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  },
+  // Very generous file size limit for avatars
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
 });

@@ -7,7 +7,7 @@ import {
   resetPasswordController,
 } from "../controller/authController";
 import { jwtAuth } from "../middleware/jwtAuth";
-import { upload } from "../middleware/upload";
+import { upload, avatarUpload } from "../middleware/upload";
 import { uploadImageController } from "../controller/uploadController";
 import {
   updateMeProfile,
@@ -35,8 +35,8 @@ router.post("/me/change-password", jwtAuth(), changeMyPassword);
 router.post(
   "/me/avatar",
   jwtAuth(),
-  upload.single("file"),
-  uploadImageController,
+  avatarUpload.single("file"),
+  uploadImageController
 ); // upload avatar
 // ─────────────────────────────────────────────────────────────────────────
 

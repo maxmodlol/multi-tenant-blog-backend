@@ -9,7 +9,7 @@ import { MulterS3File } from "../types/blogsType";
 export const uploadImageController = (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): void => {
   try {
     const file = req.file as MulterS3File | undefined;
@@ -20,6 +20,7 @@ export const uploadImageController = (
     // Send back the S3 URL
     res.status(200).json({ url: file.location });
   } catch (err) {
+    console.error("Upload error:", err);
     next(err);
   }
 };
