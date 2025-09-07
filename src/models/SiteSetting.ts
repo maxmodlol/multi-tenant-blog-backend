@@ -13,6 +13,17 @@ export class SiteSetting {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
+  // Basic site metadata
+  @Column({ type: "varchar", length: 120, default: "مدونة الموقع" })
+  siteTitle!: string;
+
+  @Column({ type: "text", nullable: true })
+  siteDescription?: string | null;
+
+  // Site icon (favicon)
+  @Column({ type: "text", nullable: true })
+  siteIconUrl?: string | null;
+
   // Two logo URLs (nullable)
   @Column({ type: "text", nullable: true })
   logoLightUrl?: string;

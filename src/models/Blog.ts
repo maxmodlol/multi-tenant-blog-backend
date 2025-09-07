@@ -7,8 +7,6 @@ import {
   OneToMany,
   ManyToMany,
   JoinTable,
-  JoinColumn,
-  ManyToOne,
 } from "typeorm";
 import { BlogPage } from "./BlogPage";
 import { Category } from "./Category";

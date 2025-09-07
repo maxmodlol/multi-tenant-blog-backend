@@ -5,6 +5,7 @@ import {
   createUserController,
   deleteUserController,
   updateUserController,
+  checkEmailAvailability,
 } from "../controller/userController";
 import { jwtAuth } from "../middleware/jwtAuth";
 import { roleAuthorization } from "../middleware/roleAuthorization";
@@ -12,13 +13,39 @@ import { Role } from "../types/Role";
 
 const router = Router();
 
-// All three endpoints require ADMIN on this tenant
-router.use(jwtAuth(), roleAuthorization([Role.ADMIN]));
+// Publishers manage users within their tenant (invite EDITORs);
+// Main ADMIN can manage across tenants and create PUBLISHERs.
+router.use(jwtAuth());
 
-router
-  .get("/", listUsersController) // list non-admins in this tenant
-  .post("/", createUserController) // create publisher/editor in this tenant
-  .put("/:userId", updateUserController) // ← add
-  .delete("/:userId", deleteUserController);
+router.get(
+  "/",
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER]),
+  listUsersController,
+);
+
+router.post(
+  "/",
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER]),
+  createUserController,
+);
+
+router.put(
+  "/:userId",
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER]),
+  updateUserController,
+);
+
+router.delete(
+  "/:userId",
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER]),
+  deleteUserController,
+);
+
+// Email availability (admin/publisher)
+router.get(
+  "/check",
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER]),
+  checkEmailAvailability,
+);
 
 export default router;

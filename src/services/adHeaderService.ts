@@ -1,7 +1,7 @@
 // src/services/adHeaderService.ts
 import { AppDataSource } from "../config/data-source";
 import { AdHeaderSetting } from "../models/AdHeaderSetting";
-import { ApiError } from "../utils/ApiError";
+// import { ApiError } from "../utils/ApiError";
 
 export async function getAdHeaderSetting(): Promise<AdHeaderSetting | null> {
   const repo = AppDataSource.getRepository(AdHeaderSetting);

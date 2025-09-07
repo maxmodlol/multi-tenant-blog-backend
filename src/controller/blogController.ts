@@ -10,7 +10,9 @@ import {
   getRelatedBlogs,
   getDashboardBlogs,
   getAnyTenantBlogById,
+  getApprovedPublicBlogById,
 } from "../services/blogService";
+import { removeBlogIndex } from "../services/globalBlogIndexService";
 import { BlogStatus, CreateBlogInput, MulterS3File } from "../types/blogsType";
 
 export const createBlogController = async (
@@ -152,7 +154,7 @@ export const getPublicBlogByIdController = async (
     const { id } = req.params;
     const tenant = (req as any).tenant || "main";
     console.log("tenant", tenant);
-    const blog = await getBlogById(tenant, id);
+    const blog = await getApprovedPublicBlogById(tenant, id);
 
     res.json(blog); // <-- no `return` here
   } catch (err) {
@@ -213,7 +215,29 @@ export const updateBlogController = async (
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
-    const updateData = req.body;
+    // Normalize incoming body similar to create controller
+    const updateData: any = { ...req.body };
+    if (typeof updateData.pages === "string") {
+      try {
+        updateData.pages = JSON.parse(updateData.pages);
+      } catch (error) {
+        console.error("JSON parse error:", error);
+      }
+    }
+    if (typeof updateData.tags === "string") {
+      try {
+        updateData.tags = JSON.parse(updateData.tags);
+      } catch (error) {
+        console.error("JSON parse error:", error);
+      }
+    }
+    if (typeof updateData.categoryNames === "string") {
+      try {
+        updateData.categoryNames = JSON.parse(updateData.categoryNames);
+      } catch (error) {
+        console.error("JSON parse error:", error);
+      }
+    }
     const blog = await updateBlog(tenant, req.params.id, updateData);
     res.status(200).json(blog);
   } catch (error) {
@@ -228,7 +252,12 @@ export const deleteBlogController = async (
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
-    await deleteBlog(tenant, req.params.id);
+    const id = req.params.id;
+    await deleteBlog(tenant, id);
+    // also remove from global index if present
+    try {
+      await removeBlogIndex(id, tenant);
+    } catch {}
     res.status(204).send();
   } catch (error) {
     next(error);

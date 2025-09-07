@@ -24,6 +24,7 @@ export interface CreateBlogInput {
 export interface IndexBlogData {
   blogId: string;
   tenant: string;
+  authorId: string;
   title: string;
   coverPhoto?: string;
   tags?: string[];

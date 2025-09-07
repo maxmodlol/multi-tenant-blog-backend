@@ -15,6 +15,12 @@ const router = Router();
 router.get("/", getSiteSettingController);
 
 // Only an ADMIN in that tenant can change them
-router.put("/", jwtAuth(), updateSiteSettingController);
+router.put(
+  "/",
+  jwtAuth(),
+  // Only ADMIN and PUBLISHER can edit site metadata and appearance
+  roleAuthorization([Role.ADMIN, Role.PUBLISHER], "any"),
+  updateSiteSettingController,
+);
 
 export default router;

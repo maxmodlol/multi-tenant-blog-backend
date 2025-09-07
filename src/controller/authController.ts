@@ -1,10 +1,16 @@
 // controller/authController.ts
 import { Request, RequestHandler, Response } from "express";
 import bcrypt from "bcrypt";
-import { findUserWithRole } from "../services/userService";
+import {
+  findUserWithRole,
+  createPasswordResetToken,
+  verifyResetToken,
+  consumeResetTokenAndUpdatePassword,
+} from "../services/userService";
 import { getTenantFromReq } from "../utils/getTenantFromReq";
 import { serialize } from "cookie";
 import { signJWT, COOKIE_NAME, COOKIE_TTL } from "../utils/jwt";
+import { sendResetEmail } from "../utils/mailer";
 
 // POST /main/auth/login
 
@@ -77,11 +83,69 @@ export const logoutController: RequestHandler = (_req, res) => {
     serialize(COOKIE_NAME, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 0, // expire immediately
       path: "/",
       domain: process.env.MAIN_DOMAIN || "localhost",
     }),
   );
   res.status(204).end(); // 204 No-Content
+};
+
+/* ------------------------------------------------------------------ */
+/* POST /api/auth/forgot-password                                      */
+/* body: { email: string }                                             */
+/* ------------------------------------------------------------------ */
+export const forgotPasswordController: RequestHandler = async (
+  req,
+  res,
+): Promise<void> => {
+  const { email } = req.body as { email?: string };
+  if (!email) {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  const created = await createPasswordResetToken(email);
+  // Always respond OK to avoid leaking whether email exists
+  if (created) {
+    const tenant = getTenantFromReq(req);
+    const baseUrl =
+      process.env.FRONTEND_URL ||
+      `https://${tenant}.${process.env.MAIN_DOMAIN}`;
+    const link = `${baseUrl}/reset-password?token=${created.token}`;
+    await sendResetEmail(email, link);
+  }
+  res.json({ ok: true });
+};
+
+/* ------------------------------------------------------------------ */
+/* POST /api/auth/reset-password                                       */
+/* body: { token: string, password: string }                           */
+/* ------------------------------------------------------------------ */
+export const resetPasswordController: RequestHandler = async (
+  req,
+  res,
+): Promise<void> => {
+  const { token, password } = req.body as { token?: string; password?: string };
+  if (!token || !password) {
+    res.status(400).json({ error: "Token and new password are required" });
+    return;
+  }
+
+  const verified = await verifyResetToken(token);
+  if (!verified) {
+    res.status(400).json({ error: "Invalid or expired token" });
+    return;
+  }
+
+  const ok = await consumeResetTokenAndUpdatePassword(
+    verified.record.id,
+    password,
+  );
+  if (!ok) {
+    res.status(400).json({ error: "Unable to reset password" });
+    return;
+  }
+  res.json({ ok: true });
 };

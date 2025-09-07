@@ -9,9 +9,10 @@ import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
 import { GlobalBlogIndex } from "../models/GlobalBlogIndex";
 import { AppDataSource } from "../config/data-source";
 import { BlogStatus } from "../types/blogsType";
-import { Not } from "typeorm";
+// import { Not } from "typeorm";
 import { fetchAuthor, fetchAuthorsMap } from "../utils/fetchAuthors";
 import { Tenant } from "../models/Tenant";
+import { BlogRevision } from "../models/BlogRevision";
 
 ///////////////////////////////////////////////////////////////////////////////
 // 1.  CREATE  ────────────────────────────────────────────────────────────────
@@ -60,14 +61,7 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
   );
   await blogRepo.save(blog); // persist pages
 
-  // global search index ─────────────────────────────────────────────────────
-  // await indexBlogPost({
-  //   blogId: blog.id,
-  //   tenant: input.tenant,
-  //   title: blog.title,
-  //   coverPhoto: blog.coverPhoto,
-  //   tags: blog.tags,
-  // });
+  // Note: indexing happens on acceptance below
 
   return blog;
 };
@@ -321,6 +315,24 @@ export const getBlogById = async (
   return { ...blog, author };
 };
 
+/**
+ * Public-safe variant: only returns a blog if it's ACCEPTED.
+ */
+export const getApprovedPublicBlogById = async (
+  tenant: string,
+  id: string,
+): Promise<Blog & { author: { id: string; name: string } }> => {
+  const blogRepo = await getRepositoryForTenant(Blog, tenant);
+  const blog = await blogRepo.findOne({
+    where: { id, status: BlogStatus.ACCEPTED },
+    relations: ["pages", "categories"],
+  });
+  if (!blog) throw new ApiError(404, "Blog not found or not approved");
+
+  const author = await fetchAuthor(blog.authorId);
+  return { ...blog, author };
+};
+
 // Update a blog (pages are handled separately)
 export const updateBlog = async (
   tenant: string,
@@ -337,8 +349,29 @@ export const updateBlog = async (
     throw new ApiError(404, "Blog not found");
   }
 
-  // ✅ If the blog is accepted and being edited, mark it for re-approval
+  // ✅ If the blog is accepted and being edited, snapshot and mark for re-approval
   if (blog.status === BlogStatus.ACCEPTED) {
+    const revRepo = await getRepositoryForTenant(BlogRevision, tenant);
+    const snapshot = {
+      title: blog.title,
+      description: blog.description,
+      coverPhoto: blog.coverPhoto,
+      tags: blog.tags,
+      pages:
+        blog.pages?.map((p) => ({
+          pageNumber: p.pageNumber,
+          content: p.content,
+        })) ?? [],
+      categories:
+        blog.categories?.map((c) => ({ id: c.id, name: c.name })) ?? [],
+      updatedAt: blog.updatedAt,
+    };
+    const rev = revRepo.create({
+      blogId: blog.id,
+      status: blog.status,
+      snapshot,
+    });
+    await revRepo.save(rev);
     blog.status = BlogStatus.PENDING_REAPPROVAL;
   }
 
@@ -358,6 +391,26 @@ export const updateBlog = async (
       blogPageRepo.create({ pageNumber, content }),
     );
     blog.pages = newPages;
+  }
+
+  // Handle categories by names if provided in updateData
+  if ((updateData as any).categoryNames) {
+    const categoryNames: string[] = Array.isArray(
+      (updateData as any).categoryNames,
+    )
+      ? ((updateData as any).categoryNames as string[])
+      : [];
+    const categoryRepo = await getRepositoryForTenant(Category, tenant);
+    const categories: Category[] = [];
+    for (const name of categoryNames) {
+      let cat = await categoryRepo.findOne({ where: { name } });
+      if (!cat) {
+        cat = categoryRepo.create({ name });
+        await categoryRepo.save(cat);
+      }
+      categories.push(cat);
+    }
+    blog.categories = categories;
   }
 
   await blogRepo.save(blog);
@@ -403,7 +456,15 @@ export const searchBlogs = async (
 
   // Build URL per tenant/blogId
   const proto = process.env.NODE_ENV === "production" ? "https" : "http";
-  const domain = process.env.NAVIGATION_DOMAIN ?? "localhost:3000";
+  const rawDomain =
+    process.env.NAVIGATION_DOMAIN ||
+    process.env.MAIN_DOMAIN ||
+    "localhost:3000";
+  // sanitize domain: strip protocol and any path/query
+  const domain = rawDomain
+    .replace(/^https?:\/\//i, "")
+    .split("/")[0]
+    .trim();
   const authorIds = results.map((r) => r.authorId);
   const authors = await fetchAuthorsMap(authorIds);
 
@@ -442,18 +503,16 @@ export const updateBlogStatus = async (
     throw new ApiError(404, "Blog not found");
   }
 
-  const isReApproval =
-    blog.status === BlogStatus.PENDING_REAPPROVAL &&
-    status === BlogStatus.ACCEPTED;
-
+  const wasAcceptedBefore = blog.status === BlogStatus.ACCEPTED;
   blog.status = status as BlogStatus;
   await blogRepo.save(blog);
 
-  // ✅ Only index if it's newly accepted or re-approved after edits
-  if (status === BlogStatus.ACCEPTED && isReApproval) {
+  // ✅ Index whenever transitioning to ACCEPTED from a non-ACCEPTED state
+  if (blog.status === BlogStatus.ACCEPTED && !wasAcceptedBefore) {
     await indexBlogPost({
       blogId: blog.id,
       tenant,
+      authorId: blog.authorId,
       title: blog.title,
       coverPhoto: blog.coverPhoto,
       tags: blog.tags,
@@ -463,7 +522,7 @@ export const updateBlogStatus = async (
   return blog;
 };
 ///////////////////////////////////////////////////////////////////////////////
-//  getRelatedBlogs  – now returns author info too
+//  getRelatedBlogs  - now returns author info too
 ///////////////////////////////////////////////////////////////////////////////
 export const getRelatedBlogs = async (
   tenant: string,

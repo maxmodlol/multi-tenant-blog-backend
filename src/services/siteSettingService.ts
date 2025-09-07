@@ -8,7 +8,7 @@ import { ApiError } from "../utils/ApiError";
  * Helpers
  * ----------------------------------------------------------------*/
 function validateHeaderStyle(
-  style: unknown
+  style: unknown,
 ): asserts style is "gradient" | "solid" {
   if (style !== "gradient" && style !== "solid") {
     throw new ApiError(400, "headerStyle must be 'gradient' or 'solid'");
@@ -32,6 +32,9 @@ function validateHslOrThrow(value: string, fieldName: string) {
  */
 export async function getOrCreateSiteSetting(tenant: string): Promise<{
   id: string;
+  siteTitle: string;
+  siteDescription?: string | null;
+  siteIconUrl?: string | null;
   logoLightUrl?: string;
   logoDarkUrl?: string;
   baseColor: string;
@@ -45,6 +48,9 @@ export async function getOrCreateSiteSetting(tenant: string): Promise<{
   let setting = await repo.findOneBy({});
   if (!setting) {
     setting = repo.create({
+      siteTitle: "مدونة الموقع",
+      siteDescription: null,
+      siteIconUrl: null,
       headerStyle: "gradient", // <-- default
       headerColor: null,
     });
@@ -61,6 +67,9 @@ export async function getOrCreateSiteSetting(tenant: string): Promise<{
 
   return {
     id: setting.id,
+    siteTitle: setting.siteTitle,
+    siteDescription: setting.siteDescription ?? null,
+    siteIconUrl: setting.siteIconUrl ?? null,
     logoLightUrl: setting.logoLightUrl || undefined,
     logoDarkUrl: setting.logoDarkUrl || undefined,
     baseColor: setting.baseColor,
@@ -77,14 +86,20 @@ export async function updateSiteSetting(
   tenant: string,
   id: string,
   updates: Partial<{
+    siteTitle: string;
+    siteDescription: string | null;
+    siteIconUrl: string | null;
     logoLightUrl: string;
     logoDarkUrl: string;
     baseColor: string;
     headerStyle: "gradient" | "solid";
     headerColor: string | null;
-  }>
+  }>,
 ): Promise<{
   id: string;
+  siteTitle: string;
+  siteDescription?: string | null;
+  siteIconUrl?: string | null;
   logoLightUrl?: string;
   logoDarkUrl?: string;
   baseColor: string;
@@ -107,7 +122,7 @@ export async function updateSiteSetting(
     if (!color)
       throw new ApiError(
         400,
-        "headerColor required when headerStyle is 'solid'"
+        "headerColor required when headerStyle is 'solid'",
       );
     validateHslOrThrow(color, "headerColor");
   }
@@ -130,6 +145,9 @@ export async function updateSiteSetting(
 
   return {
     id: saved.id,
+    siteTitle: saved.siteTitle,
+    siteDescription: saved.siteDescription ?? null,
+    siteIconUrl: saved.siteIconUrl ?? null,
     logoLightUrl: saved.logoLightUrl,
     logoDarkUrl: saved.logoDarkUrl,
     baseColor: saved.baseColor,
