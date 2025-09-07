@@ -17,8 +17,10 @@
     "seed:main": "ts-node -r tsconfig-paths/register src/scripts/seedMainTenant.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "clean": "rimraf dist node_modules/.cache",
-    "migration:generate": "npm run typeorm -- -d src/config/data-source.ts migration:generate src/migrations/Init",
+    "migration:generate": "npm run typeorm -- -d src/config/data-source.ts migration:generate",
     "migration:run": "npm run typeorm -- -d src/config/data-source.ts migration:run",
+    "migration:revert": "npm run typeorm -- -d src/config/data-source.ts migration:revert",
+    "migration:show": "npm run typeorm -- -d src/config/data-source.ts migration:show",
     "format:fix": "prettier --write ."
   },
   "repository": {
@@ -34,6 +36,7 @@
   "homepage": "https://github.com/maxmodlol/multi-tenant-blog-backend#readme",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.779.0",
+    "@types/nodemailer": "^6.4.17",
     "bcrypt": "^5.1.1",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
@@ -43,6 +46,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.2",
     "multer-s3": "^3.0.1",
+    "nodemailer": "^7.0.5",
     "pg": "^8.13.3",
     "reflect-metadata": "^0.2.2",
     "swagger-ui-express": "^5.0.1",

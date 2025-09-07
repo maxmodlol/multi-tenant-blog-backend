@@ -1,8 +1,9 @@
 import { DataSource } from "typeorm";
-import { User } from "../models/User";
+// import { User } from "../models/User";
 import { Blog } from "../models/Blog";
 import { BlogPage } from "../models/BlogPage";
 import { Category } from "../models/Category";
+import { BlogRevision } from "../models/BlogRevision";
 import { Client } from "pg";
 import { SiteSetting } from "../models/SiteSetting";
 
@@ -50,7 +51,7 @@ export async function getTenantDataSource(tenant: string): Promise<DataSource> {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
     schema: tenant, // Use the tenant (subdomain) as the schema name
-    entities: [Blog, BlogPage, Category, SiteSetting],
+    entities: [Blog, BlogPage, Category, SiteSetting, BlogRevision],
     synchronize: true, // For development; use migrations in production
     logging: false,
   });

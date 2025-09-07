@@ -19,7 +19,8 @@ export class User {
   @Column({ length: 50 }) name!: string;
   @Column({ unique: true }) email!: string;
   @Column() password!: string;
-  @Column({ nullable: true }) avatarUrl?: string; // ← new!
+  @Column({ nullable: true }) avatarUrl?: string;
+  @Column({ nullable: true, type: "text" }) bio?: string;
 
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
@@ -27,7 +28,10 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async hash() {
-    this.password = await bcrypt.hash(this.password, 10);
+    // Only hash if it isn't already a bcrypt hash
+    if (this.password && !this.password.startsWith("$2")) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
   }
 
   // convenience: what links does this user have?

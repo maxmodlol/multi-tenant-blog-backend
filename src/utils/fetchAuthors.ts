@@ -9,7 +9,12 @@ import { User } from "../models/User";
 export async function fetchAuthor(authorId: string) {
   const repo = AppDataSource.getRepository(User);
   const user = await repo.findOneBy({ id: authorId });
-  return { id: authorId, name: user?.name ?? "مؤلف مجهول" };
+  return {
+    id: authorId,
+    name: user?.name ?? "مؤلف مجهول",
+    bio: user?.bio ?? null,
+    avatarUrl: user?.avatarUrl ?? null,
+  } as any;
 }
 
 /**
@@ -20,7 +25,5 @@ export async function fetchAuthorsMap(authorIds: string[]) {
   const repo = AppDataSource.getRepository(User);
   const users = await repo.find({ where: { id: In(authorIds) } });
 
-  return Object.fromEntries(
-    users.map((u) => [u.id, u.name]), // { "uuid" : "Ahmed" }
-  );
+  return Object.fromEntries(users.map((u) => [u.id, u.name]));
 }

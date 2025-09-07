@@ -13,7 +13,7 @@ import { getTenantFromReq } from "../utils/getTenantFromReq";
 export const getSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const tenant = (req as any).tenant ?? getTenantFromReq(req);
@@ -30,7 +30,7 @@ export const getSiteSettingController = async (
 export const updateSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<any> => {
   try {
     const tenant = getTenantFromReq(req);
@@ -40,11 +40,24 @@ export const updateSiteSettingController = async (
     }
 
     /* -------- extract optional fields ---------- */
-    const { logoLightUrl, logoDarkUrl, baseColor, headerStyle, headerColor } =
-      req.body as Record<string, unknown>;
+    const {
+      siteTitle,
+      siteDescription,
+      siteIconUrl,
+      logoLightUrl,
+      logoDarkUrl,
+      baseColor,
+      headerStyle,
+      headerColor,
+    } = req.body as Record<string, unknown>;
 
     /* -------- build updates obj dynamically ---- */
     const updates: Record<string, unknown> = {};
+    if (typeof siteTitle === "string") updates.siteTitle = siteTitle;
+    if (typeof siteDescription === "string" || siteDescription === null)
+      updates.siteDescription = siteDescription;
+    if (typeof siteIconUrl === "string" || siteIconUrl === null)
+      updates.siteIconUrl = siteIconUrl;
     if (typeof logoLightUrl === "string") updates.logoLightUrl = logoLightUrl;
     if (typeof logoDarkUrl === "string") updates.logoDarkUrl = logoDarkUrl;
     if (typeof baseColor === "string") updates.baseColor = baseColor;

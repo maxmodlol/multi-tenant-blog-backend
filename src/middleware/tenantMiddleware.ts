@@ -8,7 +8,7 @@ import { parseTenant } from "./tenant";
 export default function tenantMiddleware(
   req: Request,
   _: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   // already set by x-tenant header?
   if ((req as any).tenant) {
@@ -17,7 +17,7 @@ export default function tenantMiddleware(
 
   (req as any).tenant = parseTenant(req.headers.host);
   console.log(
-    `[TENANT] host=${req.headers.host} → tenant= ${(req as any).tenant}`
+    `[TENANT] host=${req.headers.host} → tenant= ${(req as any).tenant}`,
   );
   next();
 }

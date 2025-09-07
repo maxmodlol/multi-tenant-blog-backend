@@ -11,7 +11,10 @@ import { TenantUser } from "../models/TenantUser";
 import { Tenant } from "../models/Tenant";
 import { AdSetting } from "../models/AdSetting";
 import { AdHeaderSetting } from "../models/AdHeaderSetting";
+import { TenantAdSetting } from "../models/TenantAdSetting";
 import { SiteSetting } from "../models/SiteSetting";
+import { PasswordResetToken } from "../models/PasswordResetToken";
+import { BlogRevision } from "../models/BlogRevision";
 
 config();
 
@@ -32,9 +35,12 @@ export const AppDataSource = new DataSource({
     Tenant,
     AdSetting,
     AdHeaderSetting,
+    TenantAdSetting,
     SiteSetting,
+    PasswordResetToken,
+    BlogRevision,
   ],
-  synchronize: false, // ← turn this off
+  synchronize: false, // ← disabled to prevent data loss
   migrations: [__dirname + "/../migrations/*{.ts,.js}"], // ← add this
   logging: false,
 });

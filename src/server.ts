@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import tenantMiddleware from "./middleware/tenantMiddleware";
 import { formatError } from "./utils/ApiError";
@@ -18,6 +18,7 @@ import dashboardRouter from "./routes/dashboardRoutes";
 import tenantRoutes from "./routes/tenantRoutes";
 import siteSettingRoutes from "./routes/siteSettingRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
+import tenantAdRoutes from "./routes/tenantAdRoutes";
 const app = express();
 
 // ✅ Read main domain from .env (e.g., 'localhost' or 'yourdomain.com')
@@ -46,7 +47,7 @@ const corsOptions = {
       }
 
       return callback(new Error("❌ Not allowed by CORS"));
-    } catch (error) {
+    } catch {
       return callback(new Error("❌ Invalid Origin"));
     }
   },
@@ -77,6 +78,7 @@ app.use("/api/settings/users", userRoutes);
 app.use("/api/settings/ads", adRouter);
 app.use("/api/settings/ads/header", headerRouter);
 app.use("/api/settings/site", siteSettingRoutes);
+app.use("/api/settings/tenant-ads", tenantAdRoutes);
 app.use("/api/dashboard/blogs", dashboardRouter);
 
 app.use("/api/auth", authRoutes);
@@ -93,7 +95,7 @@ const swaggerDocument = JSON.parse(
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // ✅ Global error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response) => {
   console.error(err.stack);
   const formattedError = formatError(err);
   res.status(formattedError.status).json(formattedError);
@@ -104,7 +106,13 @@ const PORT = process.env.PORT || 5000;
 
 // ✅ Initialize database and start the server
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
+    try {
+      await AppDataSource.runMigrations();
+      console.log("✅ Ran pending migrations");
+    } catch (err) {
+      console.error("❌ Migration run failed:", err);
+    }
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
       console.log(

@@ -1,6 +1,6 @@
 // scripts/seedSuperAdmin.ts
 import "dotenv/config";
-import bcrypt from "bcrypt";
+// import bcrypt from "bcrypt";
 import { AppDataSource } from "../config/data-source";
 import { User } from "../models/User";
 import { TenantUser } from "../models/TenantUser";
