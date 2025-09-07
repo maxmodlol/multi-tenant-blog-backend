@@ -27,18 +27,27 @@ export async function provisionSubdomain(domain: string) {
 
   const normalized = (domain || "").trim().toLowerCase();
   if (!isValidSubdomain(normalized)) {
-    throw new ApiError(400, "Invalid subdomain format");
+    throw new ApiError(
+      400,
+      "Subdomain format is invalid. Use only lowercase letters, numbers, and hyphens. Cannot start or end with a hyphen."
+    );
   }
   if (
     normalized === "main" ||
     RESERVED.includes(normalized as (typeof RESERVED)[number])
   ) {
-    throw new ApiError(400, "Subdomain is reserved and cannot be used");
+    throw new ApiError(
+      400,
+      `The subdomain "${normalized}" is reserved and cannot be used. Please choose a different name.`
+    );
   }
 
   const existing = await repo.findOne({ where: { domain: normalized } });
   if (existing) {
-    throw new ApiError(400, "Subdomain already exists");
+    throw new ApiError(
+      400,
+      `The subdomain "${normalized}" is already taken. Please choose a different name.`
+    );
   }
 
   const record = repo.create({ domain: normalized });
@@ -48,7 +57,7 @@ export async function provisionSubdomain(domain: string) {
   try {
     const siteSettingRepo = await getRepositoryForTenant(
       SiteSetting,
-      normalized,
+      normalized
     );
     let existing = await siteSettingRepo.findOneBy({});
     if (!existing) {
@@ -66,7 +75,7 @@ export async function provisionSubdomain(domain: string) {
     console.error(
       "Failed to initialize default SiteSetting for tenant",
       normalized,
-      e,
+      e
     );
   }
   return record;

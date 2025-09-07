@@ -19,7 +19,7 @@ export async function createUserWithRole(
   email: string,
   password: string,
   role: Role,
-  domain: string,
+  domain: string
 ) {
   const userRepo = AppDataSource.getRepository(User);
   const linkRepo = AppDataSource.getRepository(TenantUser);
@@ -29,18 +29,13 @@ export async function createUserWithRole(
     throw new ApiError(400, "That email is already registered");
   }
 
-  // 1) If publisher, spin up a new Tenant record & subdomain
-  if (role === Role.PUBLISHER) {
-    await provisionSubdomain(domain);
-  }
-
-  // 2) Otherwise (and also after provisioning), make sure the domain exists
+  // 1) Make sure the domain exists (for all roles including publishers)
   const tenant = await findTenantByDomain(domain);
   if (!tenant) {
-    throw new ApiError(400, `Tenant “${domain}” does not exist`);
+    throw new ApiError(400, `Tenant "${domain}" does not exist`);
   }
 
-  // 3) Create the user
+  // 2) Create the user
   const user = userRepo.create({
     name,
     email,
@@ -48,7 +43,7 @@ export async function createUserWithRole(
   });
   await userRepo.save(user);
 
-  // 4) Link into the tenant
+  // 3) Link into the tenant
   const link = linkRepo.create({
     tenant: domain,
     role,
@@ -102,7 +97,7 @@ export async function verifyResetToken(token: string) {
 
 export async function consumeResetTokenAndUpdatePassword(
   recordId: string,
-  newPassword: string,
+  newPassword: string
 ) {
   const resetRepo = AppDataSource.getRepository(PasswordResetToken);
   const userRepo = AppDataSource.getRepository(User);
@@ -149,7 +144,7 @@ export async function updateUserWithRole(
     role?: Role;
     domain?: string;
   },
-  currentTenant: string,
+  currentTenant: string
 ): Promise<{ user: User; link: TenantUser }> {
   const userRepo = AppDataSource.getRepository(User);
   const linkRepo = AppDataSource.getRepository(TenantUser);

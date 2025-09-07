@@ -57,7 +57,7 @@ export const createBlog = async (input: CreateBlogInput): Promise<Blog> => {
 
   // pages ───────────────────────────────────────────────────────────────────
   blog.pages = input.pages.map(({ pageNumber, content }) =>
-    blogPageRepo.create({ pageNumber, content }),
+    blogPageRepo.create({ pageNumber, content })
   );
   await blogRepo.save(blog); // persist pages
 
@@ -73,7 +73,7 @@ export const getAllBlogs = async (
   tenant: string,
   page: number,
   limit: number,
-  categorySlug?: string,
+  categorySlug?: string
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string } })[];
   totalPages: number;
@@ -119,7 +119,7 @@ export const getBlogsForUser = async (
   authorId: string,
   page: number,
   limit: number,
-  categorySlug?: string,
+  categorySlug?: string
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string } })[];
   totalPages: number;
@@ -181,7 +181,7 @@ async function findTenantForBlog(blogId: string): Promise<string> {
 // New admin‐only “any tenant” loader
 // ——————————————————————————————————————————————————————
 export async function getAnyTenantBlogById(
-  id: string,
+  id: string
 ): Promise<Blog & { author: { id: string; name: string } }> {
   // 1️⃣ discover which tenant holds this ID
   const tenant = await findTenantForBlog(id);
@@ -195,7 +195,7 @@ export const getDashboardBlogs = async (
   limit: number,
   categorySlug?: string,
   statusFilter?: BlogStatus, // now a single status or undefined
-  search?: string,
+  search?: string
 ): Promise<{
   blogs: (Blog & { author: { id: string; name: string }; tenant: string })[];
   totalPages: number;
@@ -218,17 +218,29 @@ export const getDashboardBlogs = async (
         .leftJoinAndSelect("blog.pages", "pages")
         .leftJoinAndSelect("blog.categories", "categories");
 
+      // Build WHERE conditions
+      const whereConditions: string[] = [];
+      const parameters: any = {};
+
       // apply single‐status filter
       if (statusFilter) {
-        qb = qb.andWhere("blog.status = :statusFilter", { statusFilter });
+        whereConditions.push("blog.status = :statusFilter");
+        parameters.statusFilter = statusFilter;
       }
 
       if (categorySlug && categorySlug !== "all") {
-        qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
+        whereConditions.push("categories.name = :categorySlug");
+        parameters.categorySlug = categorySlug;
       }
 
       if (search) {
-        qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
+        whereConditions.push("blog.title ILIKE :search");
+        parameters.search = `%${search}%`;
+      }
+
+      // Apply WHERE conditions if any exist
+      if (whereConditions.length > 0) {
+        qb = qb.where(whereConditions.join(" AND "), parameters);
       }
 
       const blogsForThisTenant = await qb.getMany();
@@ -243,7 +255,7 @@ export const getDashboardBlogs = async (
             name: authorMap[b.authorId] ?? "مؤلف مجهول",
           },
           tenant: t,
-        })),
+        }))
       );
     }
 
@@ -264,17 +276,29 @@ export const getDashboardBlogs = async (
     .leftJoinAndSelect("blog.pages", "pages")
     .leftJoinAndSelect("blog.categories", "categories");
 
+  // Build WHERE conditions
+  const whereConditions: string[] = [];
+  const parameters: any = {};
+
   // single‐status filter
   if (statusFilter) {
-    qb = qb.where("blog.status = :statusFilter", { statusFilter });
+    whereConditions.push("blog.status = :statusFilter");
+    parameters.statusFilter = statusFilter;
   }
 
   if (categorySlug && categorySlug !== "all") {
-    qb = qb.andWhere("categories.name = :categorySlug", { categorySlug });
+    whereConditions.push("categories.name = :categorySlug");
+    parameters.categorySlug = categorySlug;
   }
 
   if (search) {
-    qb = qb.andWhere("blog.title ILIKE :search", { search: `%${search}%` });
+    whereConditions.push("blog.title ILIKE :search");
+    parameters.search = `%${search}%`;
+  }
+
+  // Apply WHERE conditions if any exist
+  if (whereConditions.length > 0) {
+    qb = qb.where(whereConditions.join(" AND "), parameters);
   }
 
   const [rawBlogs, totalCount] = await qb
@@ -302,7 +326,7 @@ export const getDashboardBlogs = async (
 // Retrieve a specific approved blog by ID
 export const getBlogById = async (
   tenant: string,
-  id: string,
+  id: string
 ): Promise<Blog & { author: { id: string; name: string } }> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   const blog = await blogRepo.findOne({
@@ -320,7 +344,7 @@ export const getBlogById = async (
  */
 export const getApprovedPublicBlogById = async (
   tenant: string,
-  id: string,
+  id: string
 ): Promise<Blog & { author: { id: string; name: string } }> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   const blog = await blogRepo.findOne({
@@ -337,7 +361,7 @@ export const getApprovedPublicBlogById = async (
 export const updateBlog = async (
   tenant: string,
   id: string,
-  updateData: Partial<CreateBlogInput>,
+  updateData: Partial<CreateBlogInput>
 ): Promise<Blog> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
   let blog = await blogRepo.findOne({
@@ -388,7 +412,7 @@ export const updateBlog = async (
     }
 
     const newPages = pages.map(({ pageNumber, content }) =>
-      blogPageRepo.create({ pageNumber, content }),
+      blogPageRepo.create({ pageNumber, content })
     );
     blog.pages = newPages;
   }
@@ -396,7 +420,7 @@ export const updateBlog = async (
   // Handle categories by names if provided in updateData
   if ((updateData as any).categoryNames) {
     const categoryNames: string[] = Array.isArray(
-      (updateData as any).categoryNames,
+      (updateData as any).categoryNames
     )
       ? ((updateData as any).categoryNames as string[])
       : [];
@@ -429,7 +453,7 @@ export const deleteBlog = async (tenant: string, id: string): Promise<void> => {
 // Global search: only return approved blogs from the global index
 export const searchBlogs = async (
   query: string,
-  tenant?: string,
+  tenant?: string
 ): Promise<(GlobalBlogIndex & { url: string })[]> => {
   const globalRepo = AppDataSource.getRepository(GlobalBlogIndex);
 
@@ -482,7 +506,7 @@ export const searchBlogs = async (
 export const updateBlogStatus = async (
   tenant: string,
   id: string,
-  status: string,
+  status: string
 ): Promise<Blog> => {
   const validStatuses = [
     BlogStatus.DRAFTED,
@@ -527,7 +551,7 @@ export const updateBlogStatus = async (
 export const getRelatedBlogs = async (
   tenant: string,
   currentBlogId: string,
-  limit = 4,
+  limit = 4
 ): Promise<(Blog & { author: { id: string; name: string } | undefined })[]> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
 
@@ -553,7 +577,7 @@ export const getRelatedBlogs = async (
   if (tags.length)
     qb.andWhere(
       tags.map((_, i) => `blog.tags LIKE :t${i}`).join(" OR "),
-      tags.reduce((a, t, i) => ({ ...a, [`t${i}`]: `%${t}%` }), {}),
+      tags.reduce((a, t, i) => ({ ...a, [`t${i}`]: `%${t}%` }), {})
     );
 
   qb.orderBy("blog.createdAt", "DESC").take(limit);

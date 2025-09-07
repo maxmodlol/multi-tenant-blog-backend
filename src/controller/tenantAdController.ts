@@ -38,8 +38,14 @@ export const tenantAdController = {
    */
   async getTenantAds(req: Request, res: Response) {
     try {
-      // For dashboard, we want ALL tenant ads, not filtered by current tenant
-      const ads = await tenantAdService.getAllTenantAdSettings();
+      const tenantId = getTenantFromReq(req);
+
+      if (!tenantId) {
+        throw new ApiError(400, "Tenant ID is required");
+      }
+
+      // Get ads for the current tenant only
+      const ads = await tenantAdService.getTenantAdSettings(tenantId);
       res.json(ads);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -94,7 +100,7 @@ export const tenantAdController = {
       const ad = await tenantAdService.updateTenantAdSetting(
         tenantId,
         id,
-        req.body,
+        req.body
       );
       res.json(ad);
     } catch (error) {
@@ -150,7 +156,7 @@ export const tenantAdController = {
       const ads = await tenantAdService.getTenantAdsForPage(
         tenantId,
         pageType,
-        placementArray,
+        placementArray
       );
 
       res.json(ads);
@@ -183,7 +189,7 @@ export const tenantAdController = {
       const ads = await tenantAdService.getTenantAdsForPage(
         tenantId,
         pageType,
-        placementArray,
+        placementArray
       );
 
       res.json(ads);

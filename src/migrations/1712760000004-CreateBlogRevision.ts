@@ -21,3 +21,4 @@ export class CreateBlogRevision1712760000004 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "blog_revision"`);
   }
 }
+
