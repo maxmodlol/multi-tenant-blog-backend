@@ -84,12 +84,33 @@ export const getAllBlogsController = async (
       "Backend getAllBlogsController - categorySlug type:",
       typeof categorySlug
     );
+    console.log(
+      "Backend getAllBlogsController - categorySlug length:",
+      categorySlug?.length
+    );
+    console.log(
+      "Backend getAllBlogsController - categorySlug char codes:",
+      categorySlug
+        ? Array.from(categorySlug).map((c) => c.charCodeAt(0))
+        : "undefined"
+    );
     console.log("Backend getAllBlogsController - tenant:", tenant);
+    console.log(
+      "Backend getAllBlogsController - host header:",
+      req.headers.host
+    );
+    console.log(
+      "Backend getAllBlogsController - x-tenant header:",
+      req.headers["x-tenant"]
+    );
+    console.log("Backend getAllBlogsController - full URL:", req.url);
+    console.log("Backend getAllBlogsController - query params:", req.query);
 
     const blogs = await getAllBlogs(tenant, page, limit, categorySlug);
 
     res.status(200).json(blogs);
   } catch (error) {
+    console.error("Backend getAllBlogsController - Error:", error);
     next(error);
   }
 };

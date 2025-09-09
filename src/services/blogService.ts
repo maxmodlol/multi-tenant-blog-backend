@@ -79,49 +79,76 @@ export const getAllBlogs = async (
   totalPages: number;
   totalBlogs: number;
 }> => {
-  const blogRepo = await getRepositoryForTenant(Blog, tenant);
+  try {
+    console.log("Backend getAllBlogs - Starting with tenant:", tenant);
+    const blogRepo = await getRepositoryForTenant(Blog, tenant);
+    console.log("Backend getAllBlogs - Got repository for tenant:", tenant);
 
-  const qb = blogRepo
-    .createQueryBuilder("blog")
-    .leftJoinAndSelect("blog.pages", "pages")
-    .leftJoinAndSelect("blog.categories", "categories")
-    .where("blog.status = :status", { status: BlogStatus.ACCEPTED });
+    const qb = blogRepo
+      .createQueryBuilder("blog")
+      .leftJoinAndSelect("blog.pages", "pages")
+      .leftJoinAndSelect("blog.categories", "categories")
+      .where("blog.status = :status", { status: BlogStatus.ACCEPTED });
 
-  if (categorySlug && categorySlug !== "all") {
-    console.log("Backend getAllBlogs - categorySlug:", categorySlug);
+    if (categorySlug && categorySlug !== "all") {
+      console.log("Backend getAllBlogs - categorySlug:", categorySlug);
+      console.log(
+        "Backend getAllBlogs - categorySlug type:",
+        typeof categorySlug
+      );
+      console.log(
+        "Backend getAllBlogs - categorySlug length:",
+        categorySlug.length
+      );
+
+      // Debug: Check what categories exist in the database
+      const categoryRepo = await getRepositoryForTenant(Category, tenant);
+      const allCategories = await categoryRepo.find();
+      console.log(
+        "Backend getAllBlogs - All categories in database:",
+        allCategories.map((c) => c.name)
+      );
+      console.log("Backend getAllBlogs - Looking for category:", categorySlug);
+
+      qb.andWhere("categories.name = :categorySlug", { categorySlug });
+    }
+
+    console.log("Backend getAllBlogs - Executing query...");
+    const [blogs, totalBlogs] = await qb
+      .orderBy("blog.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
     console.log(
-      "Backend getAllBlogs - categorySlug type:",
-      typeof categorySlug
+      "Backend getAllBlogs - Query executed successfully. Found blogs:",
+      blogs.length
     );
-    console.log(
-      "Backend getAllBlogs - categorySlug length:",
-      categorySlug.length
+
+    // ── Enrich with author profiles (public/User table) ──────────────────────
+    const authorIds = [...new Set(blogs.map((b) => b.authorId))];
+    const authorMap = await fetchAuthorsMap(authorIds);
+    const enriched = blogs.map((b) => ({
+      ...b,
+      author: {
+        id: b.authorId,
+        name: authorMap[b.authorId] ?? "مؤلف مجهول",
+      },
+    }));
+
+    return {
+      blogs: enriched,
+      totalBlogs,
+      totalPages: Math.ceil(totalBlogs / limit),
+    };
+  } catch (error) {
+    console.error("Backend getAllBlogs - Error details:", error);
+    console.error(
+      "Backend getAllBlogs - Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
     );
-    qb.andWhere("categories.name = :categorySlug", { categorySlug });
+    throw error;
   }
-
-  const [blogs, totalBlogs] = await qb
-    .orderBy("blog.createdAt", "DESC")
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getManyAndCount();
-
-  // ── Enrich with author profiles (public/User table) ──────────────────────
-  const authorIds = [...new Set(blogs.map((b) => b.authorId))];
-  const authorMap = await fetchAuthorsMap(authorIds);
-  const enriched = blogs.map((b) => ({
-    ...b,
-    author: {
-      id: b.authorId,
-      name: authorMap[b.authorId] ?? "مؤلف مجهول",
-    },
-  }));
-
-  return {
-    blogs: enriched,
-    totalBlogs,
-    totalPages: Math.ceil(totalBlogs / limit),
-  };
 };
 export const getBlogsForUser = async (
   tenant: string,
