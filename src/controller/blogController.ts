@@ -18,7 +18,7 @@ import { BlogStatus, CreateBlogInput, MulterS3File } from "../types/blogsType";
 export const createBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const { title, tags, categoryNames } = req.body;
@@ -70,7 +70,7 @@ export const createBlogController = async (
 export const getAllBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -78,6 +78,13 @@ export const getAllBlogsController = async (
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 9;
     const categorySlug = req.query.category as string | undefined;
+
+    console.log("Backend getAllBlogsController - categorySlug:", categorySlug);
+    console.log(
+      "Backend getAllBlogsController - categorySlug type:",
+      typeof categorySlug
+    );
+    console.log("Backend getAllBlogsController - tenant:", tenant);
 
     const blogs = await getAllBlogs(tenant, page, limit, categorySlug);
 
@@ -89,7 +96,7 @@ export const getAllBlogsController = async (
 export const getDashboardBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<any> => {
   try {
     const user = (req as any).user;
@@ -137,7 +144,7 @@ export const getDashboardBlogsController = async (
       limit,
       category,
       statusFilter,
-      search,
+      search
     );
 
     res.json(result);
@@ -148,7 +155,7 @@ export const getDashboardBlogsController = async (
 export const getPublicBlogByIdController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -164,7 +171,7 @@ export const getPublicBlogByIdController = async (
 export const uploadImageController = (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): void => {
   try {
     const file = req.file as MulterS3File | undefined;
@@ -185,7 +192,7 @@ export const uploadImageController = (
 export const getDashboardBlogByIdController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -211,7 +218,7 @@ export const getDashboardBlogByIdController = async (
 export const updateBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -248,7 +255,7 @@ export const updateBlogController = async (
 export const deleteBlogController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const tenant = (req as any).tenant || "main";
@@ -267,7 +274,7 @@ export const deleteBlogController = async (
 export const searchBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     // q: search string (optional → if empty, return all)
@@ -285,7 +292,7 @@ export const searchBlogsController = async (
 export const updateBlogStatusController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const tenant: string = (req as any).tenant || "main";
@@ -306,7 +313,7 @@ export const updateBlogStatusController = async (
 export const getRelatedBlogsController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   try {
     const tenant = (req as any).tenant || "main";
