@@ -10,7 +10,7 @@ export function parseTenant(hostname: string | undefined): "main" | string {
   if (
     host === "localhost" ||
     RESERVED.includes(parts[0] as (typeof RESERVED)[number]) ||
-    parts.length < 3
+    parts.length < 2
   ) {
     return "main";
   }

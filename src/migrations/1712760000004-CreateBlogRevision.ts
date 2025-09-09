@@ -22,3 +22,6 @@ export class CreateBlogRevision1712760000004 implements MigrationInterface {
   }
 }
 
+
+
+

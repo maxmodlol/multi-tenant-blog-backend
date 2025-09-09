@@ -88,6 +88,15 @@ export const getAllBlogs = async (
     .where("blog.status = :status", { status: BlogStatus.ACCEPTED });
 
   if (categorySlug && categorySlug !== "all") {
+    console.log("Backend getAllBlogs - categorySlug:", categorySlug);
+    console.log(
+      "Backend getAllBlogs - categorySlug type:",
+      typeof categorySlug
+    );
+    console.log(
+      "Backend getAllBlogs - categorySlug length:",
+      categorySlug.length
+    );
     qb.andWhere("categories.name = :categorySlug", { categorySlug });
   }
 

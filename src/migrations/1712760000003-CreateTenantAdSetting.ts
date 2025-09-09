@@ -38,4 +38,3 @@ export class CreateTenantAdSetting1712760000003 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "tenant_ad_setting"`);
   }
 }
-
