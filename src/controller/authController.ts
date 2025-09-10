@@ -49,7 +49,7 @@ export async function loginController(req: Request, res: Response) {
       maxAge: COOKIE_TTL,
       path: "/",
       domain: process.env.MAIN_DOMAIN || "localhost",
-    }),
+    })
   );
 
   res.json({
@@ -87,7 +87,7 @@ export const logoutController: RequestHandler = (_req, res) => {
       maxAge: 0, // expire immediately
       path: "/",
       domain: process.env.MAIN_DOMAIN || "localhost",
-    }),
+    })
   );
   res.status(204).end(); // 204 No-Content
 };
@@ -98,7 +98,7 @@ export const logoutController: RequestHandler = (_req, res) => {
 /* ------------------------------------------------------------------ */
 export const forgotPasswordController: RequestHandler = async (
   req,
-  res,
+  res
 ): Promise<void> => {
   const { email } = req.body as { email?: string };
   if (!email) {
@@ -125,7 +125,7 @@ export const forgotPasswordController: RequestHandler = async (
 /* ------------------------------------------------------------------ */
 export const resetPasswordController: RequestHandler = async (
   req,
-  res,
+  res
 ): Promise<void> => {
   const { token, password } = req.body as { token?: string; password?: string };
   if (!token || !password) {
@@ -141,7 +141,7 @@ export const resetPasswordController: RequestHandler = async (
 
   const ok = await consumeResetTokenAndUpdatePassword(
     verified.record.id,
-    password,
+    password
   );
   if (!ok) {
     res.status(400).json({ error: "Unable to reset password" });
