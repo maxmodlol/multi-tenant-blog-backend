@@ -79,19 +79,31 @@ export const getAllBlogsController = async (
     const limit = parseInt(req.query.limit as string, 10) || 9;
     const categorySlug = req.query.category as string | undefined;
 
-    console.log("Backend getAllBlogsController - categorySlug:", categorySlug);
+    // Decode URL-encoded category name for proper Arabic character handling
+    const decodedCategorySlug = categorySlug
+      ? decodeURIComponent(categorySlug)
+      : undefined;
+
     console.log(
-      "Backend getAllBlogsController - categorySlug type:",
-      typeof categorySlug
-    );
-    console.log(
-      "Backend getAllBlogsController - categorySlug length:",
-      categorySlug?.length
-    );
-    console.log(
-      "Backend getAllBlogsController - categorySlug char codes:",
+      "Backend getAllBlogsController - categorySlug (encoded):",
       categorySlug
-        ? Array.from(categorySlug).map((c) => c.charCodeAt(0))
+    );
+    console.log(
+      "Backend getAllBlogsController - decodedCategorySlug:",
+      decodedCategorySlug
+    );
+    console.log(
+      "Backend getAllBlogsController - decodedCategorySlug type:",
+      typeof decodedCategorySlug
+    );
+    console.log(
+      "Backend getAllBlogsController - decodedCategorySlug length:",
+      decodedCategorySlug?.length
+    );
+    console.log(
+      "Backend getAllBlogsController - decodedCategorySlug char codes:",
+      decodedCategorySlug
+        ? Array.from(decodedCategorySlug).map((c) => c.charCodeAt(0))
         : "undefined"
     );
     console.log("Backend getAllBlogsController - tenant:", tenant);
@@ -106,7 +118,7 @@ export const getAllBlogsController = async (
     console.log("Backend getAllBlogsController - full URL:", req.url);
     console.log("Backend getAllBlogsController - query params:", req.query);
 
-    const blogs = await getAllBlogs(tenant, page, limit, categorySlug);
+    const blogs = await getAllBlogs(tenant, page, limit, decodedCategorySlug);
 
     res.status(200).json(blogs);
   } catch (error) {
@@ -130,7 +142,9 @@ export const getDashboardBlogsController = async (
     const page = parseInt(req.query.page as string, 10) || 1;
     const limit = parseInt(req.query.limit as string, 10) || 9;
     const category =
-      typeof req.query.category === "string" ? req.query.category : undefined;
+      typeof req.query.category === "string"
+        ? decodeURIComponent(req.query.category)
+        : undefined;
 
     // ONLY ONE STATUS FILTER, not an array
     const statusParam =
