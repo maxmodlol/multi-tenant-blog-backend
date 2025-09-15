@@ -2,7 +2,10 @@
 import { Blog } from "../models/Blog";
 import { BlogPage } from "../models/BlogPage";
 import { Category } from "../models/Category";
-import { indexBlogPost } from "../services/globalBlogIndexService";
+import {
+  indexBlogPost,
+  removeBlogIndex,
+} from "../services/globalBlogIndexService";
 import { ApiError } from "../utils/ApiError";
 import { CreateBlogInput } from "../types/blogsType";
 import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
@@ -80,9 +83,7 @@ export const getAllBlogs = async (
   totalBlogs: number;
 }> => {
   try {
-    console.log("Backend getAllBlogs - Starting with tenant:", tenant);
     const blogRepo = await getRepositoryForTenant(Blog, tenant);
-    console.log("Backend getAllBlogs - Got repository for tenant:", tenant);
 
     const qb = blogRepo
       .createQueryBuilder("blog")
@@ -91,39 +92,17 @@ export const getAllBlogs = async (
       .where("blog.status = :status", { status: BlogStatus.ACCEPTED });
 
     if (categorySlug && categorySlug !== "all") {
-      console.log("Backend getAllBlogs - categorySlug:", categorySlug);
-      console.log(
-        "Backend getAllBlogs - categorySlug type:",
-        typeof categorySlug
-      );
-      console.log(
-        "Backend getAllBlogs - categorySlug length:",
-        categorySlug.length
-      );
-
       // Debug: Check what categories exist in the database
       const categoryRepo = await getRepositoryForTenant(Category, tenant);
-      const allCategories = await categoryRepo.find();
-      console.log(
-        "Backend getAllBlogs - All categories in database:",
-        allCategories.map((c) => c.name)
-      );
-      console.log("Backend getAllBlogs - Looking for category:", categorySlug);
 
       qb.andWhere("categories.name = :categorySlug", { categorySlug });
     }
 
-    console.log("Backend getAllBlogs - Executing query...");
     const [blogs, totalBlogs] = await qb
       .orderBy("blog.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
-
-    console.log(
-      "Backend getAllBlogs - Query executed successfully. Found blogs:",
-      blogs.length
-    );
 
     // ── Enrich with author profiles (public/User table) ──────────────────────
     const authorIds = [...new Set(blogs.map((b) => b.authorId))];
@@ -433,6 +412,9 @@ export const updateBlog = async (
     });
     await revRepo.save(rev);
     blog.status = BlogStatus.PENDING_REAPPROVAL;
+
+    // ✅ Keep the old version in global index until re-approved
+    // The published version remains searchable while changes are pending
   }
 
   // Destructure pages out of updateData so we don't merge a string[] into BlogPage[]
@@ -567,8 +549,10 @@ export const updateBlogStatus = async (
   blog.status = status as BlogStatus;
   await blogRepo.save(blog);
 
-  // ✅ Index whenever transitioning to ACCEPTED from a non-ACCEPTED state
-  if (blog.status === BlogStatus.ACCEPTED && !wasAcceptedBefore) {
+  // Handle global index based on status changes
+  if (blog.status === BlogStatus.ACCEPTED) {
+    // ✅ Add/Update global index when transitioning to ACCEPTED
+    // This handles both new approvals and re-approvals after PENDING_REAPPROVAL
     await indexBlogPost({
       blogId: blog.id,
       tenant,
@@ -577,6 +561,20 @@ export const updateBlogStatus = async (
       coverPhoto: blog.coverPhoto,
       tags: blog.tags,
     });
+  } else if (
+    wasAcceptedBefore &&
+    blog.status !== BlogStatus.PENDING_REAPPROVAL
+  ) {
+    // ✅ Remove from global index when transitioning away from ACCEPTED
+    // But keep it for PENDING_REAPPROVAL (old version stays published)
+    try {
+      await removeBlogIndex(blog.id, tenant);
+    } catch (error) {
+      console.warn(
+        `Failed to remove blog ${blog.id} from global index:`,
+        error
+      );
+    }
   }
 
   return blog;

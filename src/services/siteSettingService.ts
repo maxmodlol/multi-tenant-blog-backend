@@ -8,7 +8,7 @@ import { ApiError } from "../utils/ApiError";
  * Helpers
  * ----------------------------------------------------------------*/
 function validateHeaderStyle(
-  style: unknown,
+  style: unknown
 ): asserts style is "gradient" | "solid" {
   if (style !== "gradient" && style !== "solid") {
     throw new ApiError(400, "headerStyle must be 'gradient' or 'solid'");
@@ -94,7 +94,7 @@ export async function updateSiteSetting(
     baseColor: string;
     headerStyle: "gradient" | "solid";
     headerColor: string | null;
-  }>,
+  }>
 ): Promise<{
   id: string;
   siteTitle: string;
@@ -108,7 +108,6 @@ export async function updateSiteSetting(
   headerColor?: string | null;
 }> {
   const repo = await getRepositoryForTenant(SiteSetting, tenant);
-  console.log("update", updates.headerColor, updates.headerStyle, updates);
   const existing = await repo.findOneBy({ id });
   if (!existing) throw new ApiError(404, "SiteSetting not found");
 
@@ -122,7 +121,7 @@ export async function updateSiteSetting(
     if (!color)
       throw new ApiError(
         400,
-        "headerColor required when headerStyle is 'solid'",
+        "headerColor required when headerStyle is 'solid'"
       );
     validateHslOrThrow(color, "headerColor");
   }

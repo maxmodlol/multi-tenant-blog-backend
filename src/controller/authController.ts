@@ -18,11 +18,8 @@ export async function loginController(req: Request, res: Response) {
   const tenant = getTenantFromReq(req);
   const { email, password } = req.body;
 
-  console.log("🔐 login attempt →", { email, tenant });
-
   const found = await findUserWithRole(email, tenant);
   if (!found) {
-    console.log("❌ user not found or not linked to this tenant");
     res.status(401).json({ error: "Not Found" });
     return;
   }
@@ -30,10 +27,8 @@ export async function loginController(req: Request, res: Response) {
   const { user, link } = found;
 
   const passwordMatches = await bcrypt.compare(password, user.password);
-  console.log("🔐 passwordMatches:", passwordMatches);
 
   if (!passwordMatches) {
-    console.log("❌ bad credentials");
     res.status(401).json({ error: "Bad credentials" });
     return;
   }

@@ -11,7 +11,7 @@ import {
 export const listAdSettingsController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     // no tenant—blogId alone
@@ -30,7 +30,7 @@ export const listAdSettingsController = async (
 export const createAdSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const {
@@ -63,12 +63,11 @@ export const createAdSettingController = async (
 export const updateAdSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const { placement, appearance, codeSnippet, isEnabled, positionOffset } =
       req.body;
-    console.log("req");
     const id = req.params.id;
 
     if (!id) {
@@ -91,7 +90,7 @@ export const updateAdSettingController = async (
 export const deleteAdSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> => {
   try {
     const blogId = req.query.blogId as string | undefined;
