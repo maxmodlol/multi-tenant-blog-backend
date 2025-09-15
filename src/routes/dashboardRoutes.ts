@@ -31,7 +31,11 @@ dash.post("/", upload.single("coverPhoto"), createBlogController); // POST   /ap
 // SINGLE blog operations
 dash.get("/:id", getDashboardBlogByIdController); // GET    /api/dashboard/blogs/:id
 dash.patch("/:id", updateBlogController); // PATCH  /api/dashboard/blogs/:id
-dash.patch("/:id/status", updateBlogStatusController); // PATCH  /api/dashboard/blogs/:id/status
+dash.patch(
+  "/:id/status",
+  roleAuthorization([Role.ADMIN, Role.ADMIN_HELPER]),
+  updateBlogStatusController
+); // PATCH  /api/dashboard/blogs/:id/status
 dash.delete("/:id", deleteBlogController); // DELETE /api/dashboard/blogs/:id
 
 // UPLOAD image (keep **before** any "/:id" POST routes to avoid conflicts)
@@ -48,7 +52,7 @@ dash.get(
     } catch (err) {
       next(err);
     }
-  },
+  }
 );
 
 // Admin per-tenant metrics
@@ -62,7 +66,7 @@ dash.get(
     } catch (err) {
       next(err);
     }
-  },
+  }
 );
 
 // Timeseries for charts (admin or publisher for own tenant)

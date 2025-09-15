@@ -14,6 +14,8 @@ import {
 } from "../services/blogService";
 import { removeBlogIndex } from "../services/globalBlogIndexService";
 import { BlogStatus, CreateBlogInput, MulterS3File } from "../types/blogsType";
+import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
+import { Blog } from "../models/Blog";
 
 export const createBlogController = async (
   req: Request,
@@ -39,7 +41,7 @@ export const createBlogController = async (
           throw new Error();
         }
       } catch (err) {
-        console.log("error Occuerd ", err);
+        // Handle JSON parse error silently
       }
     }
 
@@ -83,40 +85,6 @@ export const getAllBlogsController = async (
     const decodedCategorySlug = categorySlug
       ? decodeURIComponent(categorySlug)
       : undefined;
-
-    console.log(
-      "Backend getAllBlogsController - categorySlug (encoded):",
-      categorySlug
-    );
-    console.log(
-      "Backend getAllBlogsController - decodedCategorySlug:",
-      decodedCategorySlug
-    );
-    console.log(
-      "Backend getAllBlogsController - decodedCategorySlug type:",
-      typeof decodedCategorySlug
-    );
-    console.log(
-      "Backend getAllBlogsController - decodedCategorySlug length:",
-      decodedCategorySlug?.length
-    );
-    console.log(
-      "Backend getAllBlogsController - decodedCategorySlug char codes:",
-      decodedCategorySlug
-        ? Array.from(decodedCategorySlug).map((c) => c.charCodeAt(0))
-        : "undefined"
-    );
-    console.log("Backend getAllBlogsController - tenant:", tenant);
-    console.log(
-      "Backend getAllBlogsController - host header:",
-      req.headers.host
-    );
-    console.log(
-      "Backend getAllBlogsController - x-tenant header:",
-      req.headers["x-tenant"]
-    );
-    console.log("Backend getAllBlogsController - full URL:", req.url);
-    console.log("Backend getAllBlogsController - query params:", req.query);
 
     const blogs = await getAllBlogs(tenant, page, limit, decodedCategorySlug);
 
@@ -195,7 +163,6 @@ export const getPublicBlogByIdController = async (
   try {
     const { id } = req.params;
     const tenant = (req as any).tenant || "main";
-    console.log("tenant", tenant);
     const blog = await getApprovedPublicBlogById(tenant, id);
 
     res.json(blog); // <-- no `return` here
@@ -330,18 +297,31 @@ export const updateBlogStatusController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const tenant: string = (req as any).tenant || "main";
-    const { status } = req.body;
+    const { status, tenant: blogTenant } = req.body;
     const { id } = req.params;
-    console.log("id ", status);
+    const user = (req as any).user;
+
+    // Use the blog's tenant if provided, otherwise fall back to request tenant
+    const tenant: string = blogTenant || (req as any).tenant || "main";
+
     if (!status) {
       res.status(400).json({ error: "Status is required" });
+      return;
+    }
+
+    // Validate that the blog exists in the specified tenant
+    const blogRepo = await getRepositoryForTenant(Blog, tenant);
+    const blog = await blogRepo.findOne({ where: { id } });
+
+    if (!blog) {
+      res.status(404).json({ error: "Blog not found in this tenant" });
       return;
     }
 
     const updatedBlog = await updateBlogStatus(tenant, id, status);
     res.status(200).json(updatedBlog);
   } catch (error) {
+    console.error(`[BLOG_APPROVAL] Error updating blog status:`, error);
     next(error);
   }
 };

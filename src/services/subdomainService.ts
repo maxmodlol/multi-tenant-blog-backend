@@ -6,6 +6,7 @@ import { RESERVED } from "../middleware/tenant";
 import { Client } from "pg";
 import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
 import { SiteSetting } from "../models/SiteSetting";
+import { Category } from "../models/Category";
 
 function isValidSubdomain(candidate: string): boolean {
   // lowercase letters, numbers, and hyphens; cannot start/end with hyphen; length 1-50
@@ -14,6 +15,84 @@ function isValidSubdomain(candidate: string): boolean {
   if (s.length < 1 || s.length > 50) return false;
   if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) return false;
   return true;
+}
+
+/**
+ * Clone site settings from main tenant to new tenant
+ */
+async function cloneSiteSettingsFromMain(newTenant: string): Promise<void> {
+  try {
+    // Get site settings from main tenant
+    const mainSiteSettingRepo = await getRepositoryForTenant(
+      SiteSetting,
+      "main"
+    );
+    const mainSiteSetting = await mainSiteSettingRepo.findOneBy({});
+
+    if (!mainSiteSetting) {
+      console.warn("No site settings found in main tenant to clone");
+      return;
+    }
+
+    // Create site settings for new tenant
+    const newSiteSettingRepo = await getRepositoryForTenant(
+      SiteSetting,
+      newTenant
+    );
+    const newSiteSetting = newSiteSettingRepo.create({
+      siteTitle: mainSiteSetting.siteTitle,
+      siteDescription: mainSiteSetting.siteDescription,
+      siteIconUrl: mainSiteSetting.siteIconUrl,
+      logoLightUrl: mainSiteSetting.logoLightUrl,
+      logoDarkUrl: mainSiteSetting.logoDarkUrl,
+      baseColor: mainSiteSetting.baseColor,
+      headerStyle: mainSiteSetting.headerStyle,
+      headerColor: mainSiteSetting.headerColor,
+    });
+
+    await newSiteSettingRepo.save(newSiteSetting);
+  } catch (error) {
+    console.error(
+      `Failed to clone site settings to tenant ${newTenant}:`,
+      error
+    );
+    // Don't throw - this is not critical for tenant creation
+  }
+}
+
+/**
+ * Clone categories from main tenant to new tenant
+ */
+async function cloneCategoriesFromMain(newTenant: string): Promise<void> {
+  try {
+    // Get all categories from main tenant
+    const mainCategoryRepo = await getRepositoryForTenant(Category, "main");
+    const mainCategories = await mainCategoryRepo.find();
+
+    if (mainCategories.length === 0) {
+      console.warn("No categories found in main tenant to clone");
+      return;
+    }
+
+    // Create categories for new tenant
+    const newCategoryRepo = await getRepositoryForTenant(Category, newTenant);
+
+    for (const mainCategory of mainCategories) {
+      // Check if category already exists (shouldn't happen, but safety first)
+      const existing = await newCategoryRepo.findOne({
+        where: { name: mainCategory.name },
+      });
+      if (!existing) {
+        const newCategory = newCategoryRepo.create({
+          name: mainCategory.name,
+        });
+        await newCategoryRepo.save(newCategory);
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to clone categories to tenant ${newTenant}:`, error);
+    // Don't throw - this is not critical for tenant creation
+  }
 }
 
 /**
