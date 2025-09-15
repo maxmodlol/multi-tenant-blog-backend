@@ -40,7 +40,7 @@ export const AppDataSource = new DataSource({
     PasswordResetToken,
     BlogRevision,
   ],
-  synchronize: false, // ← disabled to prevent data loss
+  synchronize: true, // ← enabled to auto-create tables
   migrations: [__dirname + "/../migrations/*{.ts,.js}"], // ← add this
   logging: false,
 });
