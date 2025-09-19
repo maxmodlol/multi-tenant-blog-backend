@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 
 export enum TenantAdPlacement {
+  // Site-wide placements (home, category, search pages)
   HEADER = "HEADER",
   FOOTER = "FOOTER",
   SIDEBAR = "SIDEBAR",
@@ -21,6 +22,15 @@ export enum TenantAdPlacement {
   SEARCH_BOTTOM = "SEARCH_BOTTOM",
   BLOG_LIST_TOP = "BLOG_LIST_TOP",
   BLOG_LIST_BOTTOM = "BLOG_LIST_BOTTOM",
+
+  // Blog-specific placements (individual blog posts)
+  ABOVE_TAGS = "ABOVE_TAGS",
+  UNDER_DATE = "UNDER_DATE",
+  UNDER_HERO = "UNDER_HERO",
+  UNDER_HERO_IMAGE = "UNDER_HERO_IMAGE",
+  ABOVE_SHAREABLE = "ABOVE_SHAREABLE",
+  UNDER_SHAREABLE = "UNDER_SHAREABLE",
+  INLINE = "INLINE",
 }
 
 export enum TenantAdAppearance {
@@ -35,12 +45,14 @@ export enum TenantAdAppearance {
 @Entity()
 @Index(["tenantId", "placement"])
 @Index(["tenantId", "isEnabled"])
+@Index(["scope", "placement"])
+@Index(["blogId"])
 export class TenantAdSetting {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   @Column({ type: "varchar", length: 255, nullable: false })
-  tenantId!: string;
+  tenantId!: string; // "main" for main domain, "all" for global, or specific tenant ID
 
   @Column({ type: "enum", enum: TenantAdPlacement })
   placement!: TenantAdPlacement;
@@ -62,6 +74,18 @@ export class TenantAdSetting {
 
   @Column({ type: "text", nullable: true })
   description?: string; // Description of where this ad appears
+
+  // New scope field: "main", "all", or specific tenant ID
+  @Column({ type: "varchar", length: 255, default: "main" })
+  scope!: string; // "main" = main domain only, "all" = all domains, or specific tenant ID
+
+  // For blog-specific ads
+  @Column({ type: "uuid", nullable: true })
+  blogId?: string; // Only used for blog-specific placements
+
+  // For INLINE placement: how many words before injecting
+  @Column({ type: "int", nullable: true })
+  positionOffset?: number;
 
   @Column({ type: "json", nullable: true })
   targetingRules?: {

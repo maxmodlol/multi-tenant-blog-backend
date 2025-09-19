@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import tenantMiddleware from "./middleware/tenantMiddleware";
 import { formatError } from "./utils/ApiError";
@@ -19,6 +19,7 @@ import tenantRoutes from "./routes/tenantRoutes";
 import siteSettingRoutes from "./routes/siteSettingRoutes";
 import uploadRoutes from "./routes/uploadRoutes";
 import tenantAdRoutes from "./routes/tenantAdRoutes";
+import publicTenantAdRoutes from "./routes/publicTenantAdRoutes";
 const app = express();
 
 // ✅ Read main domain from .env (e.g., 'localhost' or 'yourdomain.com')
@@ -86,6 +87,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/blogs", publicRouter);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/tenants", tenantRoutes);
+app.use("/api/public/tenant-ads", publicTenantAdRoutes);
 
 // ✅ Serve Swagger API documentation
 const swaggerDocumentPath = path.join(__dirname, "./docs/swagger.json");
@@ -95,7 +97,7 @@ const swaggerDocument = JSON.parse(
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // ✅ Global error handling middleware
-app.use((err: any, req: Request, res: Response) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
   const formattedError = formatError(err);
   res.status(formattedError.status).json(formattedError);

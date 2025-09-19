@@ -33,7 +33,10 @@ dash.get("/:id", getDashboardBlogByIdController); // GET    /api/dashboard/blogs
 dash.patch("/:id", updateBlogController); // PATCH  /api/dashboard/blogs/:id
 dash.patch(
   "/:id/status",
-  roleAuthorization([Role.ADMIN, Role.ADMIN_HELPER]),
+  roleAuthorization(
+    [Role.ADMIN, Role.ADMIN_HELPER, Role.PUBLISHER, Role.EDITOR],
+    "any"
+  ),
   updateBlogStatusController
 ); // PATCH  /api/dashboard/blogs/:id/status
 dash.delete("/:id", deleteBlogController); // DELETE /api/dashboard/blogs/:id

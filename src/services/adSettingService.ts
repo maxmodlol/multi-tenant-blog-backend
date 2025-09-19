@@ -15,7 +15,7 @@ export async function createAdSetting(
     codeSnippet: string;
     isEnabled?: boolean;
     positionOffset?: number;
-  },
+  }
 ): Promise<AdSetting> {
   // getRepositoryForBlog should internally figure out which tenant/schema based on blogId
   const repo = await getMainRepository(AdSetting);
@@ -57,7 +57,7 @@ export async function updateAdSetting(
     codeSnippet: string;
     isEnabled: boolean;
     positionOffset: number;
-  }>,
+  }>
 ): Promise<AdSetting> {
   const repo = await getMainRepository(AdSetting);
   const ad = await repo.findOne({ where: { id } });
@@ -72,7 +72,7 @@ export async function updateAdSetting(
  */
 export async function deleteAdSetting(
   blogId: string,
-  id: string,
+  id: string
 ): Promise<void> {
   const repo = await getMainRepository(AdSetting);
   const result = await repo.delete({ id, blogId });
