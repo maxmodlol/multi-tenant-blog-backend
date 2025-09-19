@@ -16,19 +16,19 @@ router.post(
   "/",
   jwtAuth(),
   roleAuthorization([Role.ADMIN]),
-  createAdSettingController,
+  createAdSettingController
 );
 router.put(
   "/:id",
   jwtAuth(),
   roleAuthorization([Role.ADMIN]),
-  updateAdSettingController,
+  updateAdSettingController
 );
 router.delete(
   "/:id",
   jwtAuth(),
   roleAuthorization([Role.ADMIN]),
-  deleteAdSettingController,
+  deleteAdSettingController
 );
 
 export default router;

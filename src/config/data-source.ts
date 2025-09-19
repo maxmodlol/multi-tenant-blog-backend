@@ -9,9 +9,9 @@ import { Category } from "../models/Category";
 import { GlobalBlogIndex } from "../models/GlobalBlogIndex";
 import { TenantUser } from "../models/TenantUser";
 import { Tenant } from "../models/Tenant";
-import { AdSetting } from "../models/AdSetting";
 import { AdHeaderSetting } from "../models/AdHeaderSetting";
 import { TenantAdSetting } from "../models/TenantAdSetting";
+import { AdSetting } from "../models/AdSetting";
 import { SiteSetting } from "../models/SiteSetting";
 import { PasswordResetToken } from "../models/PasswordResetToken";
 import { BlogRevision } from "../models/BlogRevision";
@@ -40,7 +40,7 @@ export const AppDataSource = new DataSource({
     PasswordResetToken,
     BlogRevision,
   ],
-  synchronize: true, // ← enabled to auto-create tables
+  synchronize: false, // ← enabled to auto-create tablesgit ph or
   migrations: [__dirname + "/../migrations/*{.ts,.js}"], // ← add this
   logging: false,
 });

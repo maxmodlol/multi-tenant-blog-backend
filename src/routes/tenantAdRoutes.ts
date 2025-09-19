@@ -1,5 +1,3 @@
-// src/routes/tenantAdRoutes.ts
-
 import { Router } from "express";
 import { tenantAdController } from "../controller/tenantAdController";
 import { jwtAuth } from "../middleware/jwtAuth";
@@ -8,24 +6,52 @@ import { Role } from "../types/Role";
 
 const router = Router();
 
-// PUBLIC ROUTES (no authentication required)
-router.get(
-  "/public/page/:pageType",
-  tenantAdController.getPublicTenantAdsForPage,
+// Create a new tenant ad setting (Admin only)
+router.post(
+  "/",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.createTenantAd
 );
 
-// ADMIN ROUTES (authentication required)
-router.use(jwtAuth());
-router.use(roleAuthorization([Role.ADMIN]));
+// Get all tenant ads for the current tenant
+router.get(
+  "/",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.getTenantAds
+);
 
-// CRUD operations for tenant ads (general routes first)
-router.get("/", tenantAdController.getTenantAds);
-router.post("/", tenantAdController.createTenantAd);
-router.get("/:id", tenantAdController.getTenantAdById);
-router.put("/:id", tenantAdController.updateTenantAd);
-router.delete("/:id", tenantAdController.deleteTenantAd);
+// Get a specific tenant ad by ID
+router.get(
+  "/:id",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.getTenantAdById
+);
 
-// Get ads for specific page context (specific routes last)
-router.get("/page/:pageType", tenantAdController.getTenantAdsForPage);
+// Update an existing tenant ad
+router.put(
+  "/:id",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.updateTenantAd
+);
+
+// Delete a tenant ad
+router.delete(
+  "/:id",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.deleteTenantAd
+);
+
+// Get tenant ads for a specific page type (protected route)
+router.get(
+  "/page/:pageType",
+  jwtAuth(),
+  roleAuthorization([Role.ADMIN]),
+  tenantAdController.getTenantAdsForPage
+);
 
 export default router;

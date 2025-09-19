@@ -23,6 +23,9 @@ export async function createTenantAdSetting(
     priority?: number;
     title?: string;
     description?: string;
+    scope?: string; // "main", "all", or specific tenant ID
+    blogId?: string; // Only used for blog-specific placements
+    positionOffset?: number; // For INLINE placement
     targetingRules?: {
       pageTypes?: string[];
       excludePageTypes?: string[];
@@ -38,6 +41,9 @@ export async function createTenantAdSetting(
     // For main website ads, we'll store them with a special identifier
     const finalTenantId = targetTenantId === "main" ? "main" : targetTenantId;
 
+    // Determine scope - default to "main" if not specified
+    const scope = input.scope || "main";
+
     // Use the main AppDataSource instead of getRepositoryForTenant to avoid metadata issues
     const repo = AppDataSource.getRepository(TenantAdSetting);
 
@@ -50,6 +56,9 @@ export async function createTenantAdSetting(
       priority: input.priority ?? 0,
       title: input.title,
       description: input.description,
+      scope: scope,
+      blogId: input.blogId,
+      positionOffset: input.positionOffset,
       targetingRules: input.targetingRules,
     });
 
@@ -192,14 +201,32 @@ export async function deleteTenantAdSetting(
 export async function getTenantAdsForPage(
   tenantId: string,
   pageType: string,
-  placements?: TenantAdPlacement[]
+  placements?: TenantAdPlacement[],
+  blogId?: string
 ): Promise<Record<string, TenantAdSetting[]>> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
 
+  // Build query with scope logic:
+  // 1. Global ads (scope = "all" or "global") - show everywhere
+  // 2. Main domain ads (scope = "main") - only show on main domain (tenantId = "main")
+  // 3. Specific tenant ads (scope = specific tenant ID) - only show on that specific tenant
   let query = repo
     .createQueryBuilder("ad")
-    .where("ad.tenantId = :tenantId", { tenantId })
-    .andWhere("ad.isEnabled = :isEnabled", { isEnabled: true });
+    .where("ad.isEnabled = :isEnabled", { isEnabled: true })
+    .andWhere(
+      "(ad.scope IN ('all', 'global') OR (ad.scope = 'main' AND :tenantId = 'main') OR (ad.scope = :tenantId))",
+      { tenantId }
+    );
+
+  // For blog-specific ads, also check blogId
+  if (blogId) {
+    query = query.andWhere("(ad.blogId IS NULL OR ad.blogId = :blogId)", {
+      blogId,
+    });
+  } else {
+    // For site-wide pages, exclude blog-specific ads
+    query = query.andWhere("ad.blogId IS NULL");
+  }
 
   if (placements && placements.length > 0) {
     query = query.andWhere("ad.placement IN (:...placements)", { placements });

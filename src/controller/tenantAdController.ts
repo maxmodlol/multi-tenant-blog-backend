@@ -175,7 +175,7 @@ export const tenantAdController = {
   async getPublicTenantAdsForPage(req: Request, res: Response) {
     try {
       const { pageType } = req.params;
-      const { placements, tenantId } = req.query;
+      const { placements, tenantId, blogId } = req.query;
 
       if (!tenantId || typeof tenantId !== "string") {
         throw new ApiError(400, "Tenant ID is required");
@@ -189,7 +189,8 @@ export const tenantAdController = {
       const ads = await tenantAdService.getTenantAdsForPage(
         tenantId,
         pageType,
-        placementArray
+        placementArray,
+        blogId as string
       );
 
       res.json(ads);

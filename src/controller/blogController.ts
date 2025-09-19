@@ -16,6 +16,7 @@ import { removeBlogIndex } from "../services/globalBlogIndexService";
 import { BlogStatus, CreateBlogInput, MulterS3File } from "../types/blogsType";
 import { getRepositoryForTenant } from "../utils/getRepositoryForTenant";
 import { Blog } from "../models/Blog";
+import { Role } from "../types/Role";
 
 export const createBlogController = async (
   req: Request,
@@ -303,7 +304,6 @@ export const updateBlogStatusController = async (
 
     // Use the blog's tenant if provided, otherwise fall back to request tenant
     const tenant: string = blogTenant || (req as any).tenant || "main";
-
     if (!status) {
       res.status(400).json({ error: "Status is required" });
       return;
@@ -317,6 +317,30 @@ export const updateBlogStatusController = async (
       res.status(404).json({ error: "Blog not found in this tenant" });
       return;
     }
+
+    // Role-based status validation
+    if (user.role === Role.PUBLISHER || user.role === Role.EDITOR) {
+      // Publishers and editors can only set these statuses
+      const allowedStatuses = [
+        BlogStatus.DRAFTED,
+        BlogStatus.READY_TO_PUBLISH,
+        BlogStatus.PENDING_REAPPROVAL,
+      ];
+      if (!allowedStatuses.includes(status)) {
+        res.status(403).json({
+          error:
+            "Publishers and editors can only set status to DRAFTED, READY_TO_PUBLISH, or PENDING_REAPPROVAL",
+        });
+        return;
+      }
+
+      // Publishers can only update their own blogs; Editors can update any blog in their tenant
+      if (user.role === Role.PUBLISHER && blog.authorId !== user.sub) {
+        res.status(403).json({ error: "You can only update your own blogs" });
+        return;
+      }
+    }
+    // ADMIN and ADMIN_HELPER can set any status (ACCEPTED, DECLINED, etc.)
 
     const updatedBlog = await updateBlogStatus(tenant, id, status);
     res.status(200).json(updatedBlog);
