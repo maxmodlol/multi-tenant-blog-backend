@@ -37,3 +37,4 @@ export class AddNewAdPlacements1735000000001 implements MigrationInterface {
     console.warn("Cannot remove enum values in PostgreSQL. Manual intervention required.");
   }
 }
+
