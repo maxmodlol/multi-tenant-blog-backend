@@ -366,10 +366,57 @@ export const getApprovedPublicBlogById = async (
     where: { id, status: BlogStatus.ACCEPTED },
     relations: ["pages", "categories"],
   });
-  if (!blog) throw new ApiError(404, "Blog not found or not approved");
 
-  const author = await fetchAuthor(blog.authorId);
-  return { ...blog, author };
+  if (blog) {
+    // Blog is currently accepted, return it directly
+    const author = await fetchAuthor(blog.authorId);
+    return { ...blog, author };
+  }
+
+  // Blog not found with ACCEPTED status, check if it's in PENDING_REAPPROVAL
+  const pendingBlog = await blogRepo.findOne({
+    where: { id, status: BlogStatus.PENDING_REAPPROVAL },
+  });
+
+  if (!pendingBlog) {
+    throw new ApiError(404, "Blog not found or not approved");
+  }
+
+  // Blog is in PENDING_REAPPROVAL, get the latest revision (snapshot of the last approved version)
+  const revRepo = await getRepositoryForTenant(BlogRevision, tenant);
+  const revision = await revRepo.findOne({
+    where: { blogId: id },
+    order: { createdAt: "DESC" }, // Get the most recent revision
+  });
+
+  if (!revision) {
+    throw new ApiError(404, "Blog revision not found");
+  }
+
+  // Reconstruct the blog from the revision snapshot
+  const snapshot = revision.snapshot;
+  const reconstructedBlog = {
+    id: pendingBlog.id,
+    title: snapshot.title,
+    description: snapshot.description,
+    coverPhoto: snapshot.coverPhoto,
+    tags: snapshot.tags,
+    authorId: pendingBlog.authorId,
+    status: BlogStatus.ACCEPTED, // Return as ACCEPTED since this is the approved version
+    createdAt: pendingBlog.createdAt,
+    updatedAt: snapshot.updatedAt,
+    pages:
+      snapshot.pages?.map((pageData: any) => ({
+        id: `temp-${pageData.pageNumber}`, // Temporary ID for pages from snapshot
+        pageNumber: pageData.pageNumber,
+        content: pageData.content,
+        blogId: pendingBlog.id,
+      })) || [],
+    categories: snapshot.categories || [],
+  };
+
+  const author = await fetchAuthor(pendingBlog.authorId);
+  return { ...reconstructedBlog, author };
 };
 
 // Update a blog (pages are handled separately)

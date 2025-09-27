@@ -8,7 +8,7 @@ import {
   deleteBlogController,
 } from "../controller/blogController";
 import { jwtAuth } from "../middleware/jwtAuth";
-import { upload } from "../middleware/upload";
+import { upload, videoUpload } from "../middleware/upload";
 import { uploadImageController as uploadControllerSingle } from "../controller/uploadController";
 import { Role } from "../types/Role";
 import { roleAuthorization } from "../middleware/roleAuthorization";
@@ -43,6 +43,9 @@ dash.delete("/:id", deleteBlogController); // DELETE /api/dashboard/blogs/:id
 
 // UPLOAD image (keep **before** any "/:id" POST routes to avoid conflicts)
 dash.post("/upload-image", upload.single("file"), uploadControllerSingle);
+
+// UPLOAD video (keep **before** any "/:id" POST routes to avoid conflicts)
+dash.post("/upload-video", videoUpload.single("file"), uploadControllerSingle);
 
 // Admin metrics
 dash.get(
