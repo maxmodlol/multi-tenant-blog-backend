@@ -62,3 +62,30 @@ export const avatarUpload = multer({
   // Very generous file size limit for avatars
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit
 });
+
+// Video upload configuration (accepts video files)
+export const videoUpload = multer({
+  storage: multerS3({
+    s3,
+    bucket: process.env.S3_BUCKET_NAME!,
+    contentType: multerS3.AUTO_CONTENT_TYPE,
+    cacheControl: "public,max-age=31536000",
+    key: (_req, file, cb) => {
+      const ext = file.originalname.split(".").pop();
+      cb(null, `videos/${randomUUID()}.${ext}`); // Store videos in separate folder
+    },
+  }),
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      "video/mp4",
+      "video/webm",
+      "video/ogg",
+      "video/avi",
+      "video/mov",
+      "video/quicktime",
+      "video/x-msvideo",
+    ];
+    cb(null, allowed.includes(file.mimetype));
+  },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB limit for videos
+});

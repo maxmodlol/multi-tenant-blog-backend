@@ -132,30 +132,20 @@ export async function provisionSubdomain(domain: string) {
   const record = repo.create({ domain: normalized });
   await repo.save(record);
 
-  // Create tenant schema and default SiteSetting row immediately
+  // Create tenant schema and clone data from main tenant
   try {
-    const siteSettingRepo = await getRepositoryForTenant(
-      SiteSetting,
-      normalized
+    // Clone site settings from main tenant (includes logos, favicon, etc.)
+    await cloneSiteSettingsFromMain(normalized);
+
+    // Clone categories from main tenant
+    await cloneCategoriesFromMain(normalized);
+
+    console.log(
+      `Successfully cloned main tenant data to new tenant: ${normalized}`
     );
-    let existing = await siteSettingRepo.findOneBy({});
-    if (!existing) {
-      existing = siteSettingRepo.create({
-        siteTitle: "مدونة الموقع",
-        siteDescription: null,
-        siteIconUrl: null,
-        headerStyle: "gradient",
-        headerColor: null,
-      });
-      await siteSettingRepo.save(existing);
-    }
   } catch (e) {
-    // Non-fatal; tenant created even if default settings could not be initialized
-    console.error(
-      "Failed to initialize default SiteSetting for tenant",
-      normalized,
-      e
-    );
+    // Non-fatal; tenant created even if cloning could not be completed
+    console.error("Failed to clone main tenant data for tenant", normalized, e);
   }
   return record;
 }
