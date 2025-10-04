@@ -13,7 +13,7 @@ import { getTenantFromReq } from "../utils/getTenantFromReq";
 export const getSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) => {
   try {
     const tenant = (req as any).tenant ?? getTenantFromReq(req);
@@ -30,7 +30,7 @@ export const getSiteSettingController = async (
 export const updateSiteSettingController = async (
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<any> => {
   try {
     const tenant = getTenantFromReq(req);
