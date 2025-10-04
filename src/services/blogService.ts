@@ -89,7 +89,8 @@ export const getAllBlogs = async (
       .createQueryBuilder("blog")
       .leftJoinAndSelect("blog.pages", "pages")
       .leftJoinAndSelect("blog.categories", "categories")
-      .where("blog.status = :status", { status: BlogStatus.ACCEPTED });
+      .where("blog.status = :status", { status: BlogStatus.ACCEPTED })
+      .orderBy("pages.pageNumber", "ASC");
 
     if (categorySlug && categorySlug !== "all") {
       // Debug: Check what categories exist in the database
@@ -147,7 +148,8 @@ export const getBlogsForUser = async (
     .createQueryBuilder("blog")
     .leftJoinAndSelect("blog.pages", "pages")
     .leftJoinAndSelect("blog.categories", "categories")
-    .where("blog.authorId = :authorId", { authorId });
+    .where("blog.authorId = :authorId", { authorId })
+    .orderBy("pages.pageNumber", "ASC");
 
   if (categorySlug && categorySlug !== "all") {
     qb.andWhere("categories.name = :categorySlug", { categorySlug });
@@ -289,7 +291,8 @@ export const getDashboardBlogs = async (
   let qb = blogRepo
     .createQueryBuilder("blog")
     .leftJoinAndSelect("blog.pages", "pages")
-    .leftJoinAndSelect("blog.categories", "categories");
+    .leftJoinAndSelect("blog.categories", "categories")
+    .orderBy("pages.pageNumber", "ASC");
 
   // Build WHERE conditions
   const whereConditions: string[] = [];
@@ -344,10 +347,14 @@ export const getBlogById = async (
   id: string
 ): Promise<Blog & { author: { id: string; name: string } }> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
-  const blog = await blogRepo.findOne({
-    where: { id },
-    relations: ["pages", "categories"], // 🍃 No author here
-  });
+  const blog = await blogRepo
+    .createQueryBuilder("blog")
+    .leftJoinAndSelect("blog.pages", "pages")
+    .leftJoinAndSelect("blog.categories", "categories")
+    .where("blog.id = :id", { id })
+    .orderBy("pages.pageNumber", "ASC")
+    .getOne();
+
   if (!blog) throw new ApiError(404, "Blog not found");
 
   const author = await fetchAuthor(blog.authorId);
@@ -362,10 +369,16 @@ export const getApprovedPublicBlogById = async (
   id: string
 ): Promise<Blog & { author: { id: string; name: string } }> => {
   const blogRepo = await getRepositoryForTenant(Blog, tenant);
-  const blog = await blogRepo.findOne({
-    where: { id, status: BlogStatus.ACCEPTED },
-    relations: ["pages", "categories"],
-  });
+  const blog = await blogRepo
+    .createQueryBuilder("blog")
+    .leftJoinAndSelect("blog.pages", "pages")
+    .leftJoinAndSelect("blog.categories", "categories")
+    .where("blog.id = :id AND blog.status = :status", {
+      id,
+      status: BlogStatus.ACCEPTED,
+    })
+    .orderBy("pages.pageNumber", "ASC")
+    .getOne();
 
   if (blog) {
     // Blog is currently accepted, return it directly
