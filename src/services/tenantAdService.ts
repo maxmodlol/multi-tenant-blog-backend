@@ -214,7 +214,7 @@ export async function getTenantAdsForPage(
     .createQueryBuilder("ad")
     .where("ad.isEnabled = :isEnabled", { isEnabled: true })
     .andWhere(
-      "(ad.scope IN ('all', 'global') OR (ad.scope = 'main' AND :tenantId = 'main') OR (ad.scope = :tenantId))",
+      "(ad.scope IN ('all', 'global', 'Global') OR (ad.scope = 'main' AND :tenantId = 'main') OR (ad.scope = :tenantId))",
       { tenantId }
     );
 
