@@ -206,17 +206,44 @@ export async function getTenantAdsForPage(
 ): Promise<Record<string, TenantAdSetting[]>> {
   const repo = AppDataSource.getRepository(TenantAdSetting);
 
+  // Lookup tenant UUID from subdomain (e.g., "pub7" -> tenant UUID)
+  let tenantUuid: string | null = null;
+  if (tenantId !== "main") {
+    const { Tenant } = await import("../models/Tenant");
+    const tenantRepo = AppDataSource.getRepository(Tenant);
+    const tenant = await tenantRepo.findOne({ where: { domain: tenantId } });
+    if (tenant) {
+      tenantUuid = tenant.id;
+    }
+  }
+
   // Build query with scope logic:
-  // 1. Global ads (scope = "all" or "global") - show everywhere
+  // 1. Global ads (scope = "all" or "global" or "Global") - show everywhere
   // 2. Main domain ads (scope = "main") - only show on main domain (tenantId = "main")
-  // 3. Specific tenant ads (scope = specific tenant ID) - only show on that specific tenant
+  // 3. Specific tenant ads (scope = tenant subdomain OR tenant UUID) - only show on that specific tenant
   let query = repo
     .createQueryBuilder("ad")
-    .where("ad.isEnabled = :isEnabled", { isEnabled: true })
-    .andWhere(
-      "(ad.scope IN ('all', 'global', 'Global') OR (ad.scope = 'main' AND :tenantId = 'main') OR (ad.scope = :tenantId))",
-      { tenantId }
+    .where("ad.isEnabled = :isEnabled", { isEnabled: true });
+
+  // Build scope condition
+  if (tenantId === "main") {
+    query = query.andWhere(
+      "(ad.scope IN ('all', 'global', 'Global') OR ad.scope = 'main')"
     );
+  } else {
+    // For subdomains, include global ads + tenant-specific ads (by subdomain OR UUID)
+    if (tenantUuid) {
+      query = query.andWhere(
+        "(ad.scope IN ('all', 'global', 'Global') OR ad.scope = :tenantId OR ad.scope = :tenantUuid)",
+        { tenantId, tenantUuid }
+      );
+    } else {
+      query = query.andWhere(
+        "(ad.scope IN ('all', 'global', 'Global') OR ad.scope = :tenantId)",
+        { tenantId }
+      );
+    }
+  }
 
   // For blog-specific ads, also check blogId
   if (blogId) {
